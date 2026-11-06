@@ -1,0 +1,33 @@
+---
+name: pi-bridge
+description: Delegate explicitly requested, bounded tasks from Codex to an installed Pi coding agent through the portable pi-bridge CLI or MCP tools, then check actual changes and independent acceptance results.
+---
+
+# Pi Bridge
+
+Use when the user explicitly requests Pi delegation. Codex plans, sets the workspace and acceptance criteria, and reviews results; Pi performs the bounded task. Pi workers must complete their task without recursively invoking this bridge.
+
+## Runtime discovery
+
+Requires Node.js >=22.19 (24 LTS recommended), Git for diff evidence, and an installed Pi with working model access. Windows, macOS and Linux use the same Node entrypoints. See [runtime.md](references/runtime.md) for installation, MCP setup and task contracts.
+
+Use `pi-bridge check-local` to locate Pi without model calls. A custom installation can set BRIDGE_PI_CLI to its JS entrypoint or native executable. Keep existing Pi authentication, settings, plugins and proxy configuration. The default model comes from Pi; BRIDGE_PI_PROVIDER / BRIDGE_PI_MODEL optionally select a user-authorized alternative.
+
+## Choose one interface
+
+- If `pi_bridge_*` MCP tools are available, use them. Every call requires the same unique `instance` for this Codex chat, normally `chat-<CODEX_THREAD_ID>` or `chat-<CODEX_SESSION_ID>`. For hosts without these values, establish a unique instance name once and reuse it.
+- Otherwise use `pi-bridge` on PATH, or `node <installed-package>/bin/pi-bridge.mjs`. CLI selects the Codex thread identity automatically or requires `--instance NAME`. No shared default daemon is created.
+
+State is separated by instance. Do not reuse another chat's instance or run competing writers in one workspace.
+
+## Delegate and review
+
+1. Establish the actual workspace, user-authorized changes, provider/model, timeout, stop conditions and acceptance argv. Check which tools Pi can actually use and pass relevant shell/file restrictions in task constraints.
+2. Start the instance (`pi_bridge_up` with apply:true, or CLI `up --apply`). Authorize only the intended workspace using `pi_bridge_authorize` or CLI `authorize --dir <absolute-workspace> --apply`.
+3. Submit a schema-2.0 task using `pi_bridge_delegate` with apply:true or CLI `delegate --task-file <file> --apply --wait --json`. MCP submits asynchronously; keep polling `pi_bridge_status` to a terminal state. Inspect failures before resubmitting.
+4. Inspect the actual diff, independent verifier exit codes, task status and residual issues. Worker text alone cannot establish acceptance. Missing verifier evidence produces at most a partial handoff.
+5. Cancel/resume only the current instance's known task, with apply:true / --apply. Preserve idle daemon and worker for reuse. Stop with `down` only when requested or recovery requires it.
+
+The runtime uses trusted host execution with Pi's existing OS permissions. It rejects requested read-only, offline and subdirectory confinement that it cannot enforce. Whole-workspace host execution requires explicit allowWrite:true and allowNetwork:true; choose a genuinely isolated runtime when tighter boundaries are needed. Authorization does not make filesystem or network isolation available.
+
+If subprocess creation is denied, use the host's authorized execution channel or report the block; leave OS permissions and ACLs unchanged. Report dependency checks, RPC health, real model execution and verified acceptance as separate facts. Read bounded, redacted log tails when needed.
