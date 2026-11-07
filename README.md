@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.2/uwpk-pi-bridge-0.4.2.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.3/uwpk-pi-bridge-0.4.3.tgz
 pi-bridge check-local
 ```
 
