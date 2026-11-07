@@ -181,6 +181,8 @@ export interface BridgeConfig {
   pi: {
     cliPath: string;
     nodePath: string;
+    profile?: "inherit" | "minimal";
+    args?: string[];
     provider: string;
     model: string;
   };

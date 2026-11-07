@@ -13,6 +13,8 @@ Requires Node.js >=22.19 (24 LTS recommended), Git for diff evidence, and a sele
 
 Use `pi-bridge check-local` to locate Pi without model calls. Select DSH with `--backend dsh` or MCP argument backend:"dsh" and read [dsh.md](references/dsh.md). DSH can run without Pi installed. A custom installation can set BRIDGE_PI_CLI to its JS entrypoint or native executable. Keep existing Pi authentication, settings, plugins and proxy configuration. The default model comes from Pi; BRIDGE_PI_PROVIDER / BRIDGE_PI_MODEL optionally select a user-authorized alternative.
 
+For plugin-heavy Pi installations or upgrade acceptance, read [worker-profiles.md](references/worker-profiles.md). Keep the default `inherit` unless a minimal worker is intended; explicitly retain required machine-policy extensions when disabling automatic loaders. Reuse the same profile settings for CLI and MCP. A task completes after `agent_settled` and independent verification; `agent_end` alone is insufficient.
+
 ## Choose one interface
 
 - If `pi_bridge_*` MCP tools are available, use them. Every call requires the same unique `instance` for this Codex chat, normally `chat-<CODEX_THREAD_ID>` or `chat-<CODEX_SESSION_ID>`. For hosts without these values, establish a unique instance name once and reuse it.

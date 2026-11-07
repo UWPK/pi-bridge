@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { mcpConfig } from './mcp-config.mjs';
 import { existsSync, cpSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -17,7 +18,7 @@ try {
   const action = original[0] || 'help';
   if (['help', '--help', '-h'].includes(action)) { console.log(help); process.exit(0); }
   if (action === 'mcp-config') {
-    console.log(`[mcp_servers.pi_bridge]\ncommand = ${JSON.stringify(process.execPath)}\nargs = [${JSON.stringify(join(packageRoot, 'bin/pi-bridge-mcp.mjs'))}]\nstartup_timeout_sec = 30\ntool_timeout_sec = 120`);
+    console.log(mcpConfig());
     process.exit(0);
   }
   if (action === 'install-skill') {

@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.0/uwpk-pi-bridge-0.4.0.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.1/uwpk-pi-bridge-0.4.1.tgz
 pi-bridge check-local
 ```
 
@@ -49,7 +49,7 @@ pi-bridge install-skill --apply
 pi-bridge mcp-config
 ```
 
-将输出的配置片段加入目标 Codex 配置，或在界面中添加等效的 stdio 服务。输出自动使用本机 Node 和 MCP 程序的绝对路径，适合桌面应用 PATH 与终端不同的情况。程序只显示配置，不重写当前设置。
+将输出的配置片段加入目标 Codex 配置，或在界面中添加等效的 stdio 服务。输出自动使用本机 Node 和 MCP 程序的绝对路径，并包含所选后端入口和工作进程配置的环境段，适合桌面应用 PATH 与终端不同的情况。请复制包含 `[mcp_servers.pi_bridge.env]` 的完整片段。程序只显示配置，不重写当前设置。
 
 也可使用 Codex CLI 注册：
 
@@ -113,11 +113,23 @@ DSH 的 SDK/ACP 提供更丰富的标准输入输出接入能力。本版本选�
 | `BRIDGE_PI_CLI` | Pi 的 JS 入口或原生可执行文件绝对路径 |
 | `BRIDGE_PI_PROVIDER` / `BRIDGE_PI_MODEL` | 可选模型覆盖；留空使用 Pi 默认模型 |
 | `PI_BRIDGE_STATE_ROOT` / `--state-root` | Bridge 状态根目录 |
+| `PI_BRIDGE_WORKER_PROFILE` | Pi 工作进程配置：inherit（默认）或 minimal |
+| `PI_BRIDGE_PI_ARGS` | Pi 显式加载参数的 JSON 字符串数组 |
 | `PI_BRIDGE_INSTANCE` / `--instance` | CLI 实例；默认从 Codex 线程环境变量读取 |
 
 Windows 默认状态位于 LOCALAPPDATA/pi-bridge，macOS 为 ~/Library/Application Support/pi-bridge，Linux 为 XDG_STATE_HOME/pi-bridge 或 ~/.local/state/pi-bridge。与本机旧版 Bridge 使用独立目录。自定义 Pi 安装可通过环境变量指定入口；已有正确的 Pi 配置保持原样。
 
 完整 CLI、任务 JSON 与恢复流程见 [技能运行说明](skills/pi-bridge/references/runtime.md)。
+
+## 插件较多时的精简工作进程
+
+v0.4.1 将 macOS 实操中的规避方法纳入通用配置：默认 `inherit` 完整继承 Pi；设置 `PI_BRIDGE_WORKER_PROFILE=minimal` 后，Bridge 工作进程关闭自动扩展、MCP、技能和提示模板加载。模型、认证和日常 PiDeck 配置保持原样。
+
+通过 `PI_BRIDGE_PI_ARGS` 的 JSON 数组显式加回必要项，例如 `--extension` 加机器规则插件的绝对路径。也可在当前实例 `bridge.config.json` 的 `pi.profile` / `pi.args` 中配置。首次启动会检查所选 Pi 是否支持所需参数；缺少必要文件或不支持的参数会明确报错。不会硬编码某台 Mac 的路径，也不需要额外 Python 包装器。
+
+在相同环境生成 `pi-bridge mcp-config`，CLI 与 MCP 即使用相同配置。`doctor` 显示加载配置和 Pi 报告的模型、thinking level。已有 daemon 需在任务结束后只重启对应实例。
+
+更新验收默认采用可配置的 300 秒测试期限，生产任务的期限保持原设置。`agent_end` 后继续等待 `agent_settled`，再运行独立验收；超时和插件报错会保留为失败。具体配置、机器规则保留和更新步骤见 [工作进程配置](skills/pi-bridge/references/worker-profiles.md)。
 
 ## 执行边界
 
@@ -134,8 +146,7 @@ npm run test:smoke
 
 默认测试使用模拟 Pi，不请求模型。smoke 默认明确跳过真实服务；需要显式设置 BRIDGE_LIVE_TEST=1 才会尝试真实模型请求。
 
-当前版本的 110 项离线测试覆盖 Windows 上的任务状态机、取消与恢复、真实子进程、独立验收、MCP 握手与工具调用、聊天实例隔离和安装器。官方 DSH 0.2.2-rc.1 的安装、版本帮助和 Bridge 发现检查已在独立目录验证；真实 DSH 模型任务尚未验收。macOS/Linux 已按可移植 Node API 实现；尚未完成各平台实机完整模型验收。模拟 Pi 测试通过与真实模型可用性分别记录。
-
+验证结果见 [VALIDATION.md](VALIDATION.md)。离线测试使用模拟后端；Windows 已有 DSH + QPT 模型的完整 CLI 委派与独立验收记录。用户提供的 macOS 0.3.0 修复报告记录了精简配置下的真实 Pi CLI 任务成功；当前版本的 macOS/Linux 实机验收仍需在对应电脑完成。MCP 模拟后端回归和真实模型验收分别记录。
 ## 来源
 
 由已有的本地 codex-pi-bridge 运行时整理并改进。Pi 与 MCP SDK 使用各自许可，本包未包含模型凭据、私人运行数据或 Pi 本体。

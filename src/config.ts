@@ -1,3 +1,4 @@
+import { piWorkerArgs } from "./worker-profile.js";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { join, isAbsolute, resolve, dirname, delimiter } from "node:path";
@@ -83,6 +84,8 @@ export function defaultConfig(overrides: Partial<BridgeConfig> = {}): BridgeConf
     pi: {
       cliPath: "",
       nodePath: process.execPath,
+      profile: (process.env.PI_BRIDGE_WORKER_PROFILE || "inherit") as "inherit" | "minimal",
+      args: parsePiArgsEnv(),
       provider: process.env.BRIDGE_PI_PROVIDER || "",
       model: process.env.BRIDGE_PI_MODEL || "",
     },
@@ -128,6 +131,7 @@ export function loadConfig(overrides: Partial<BridgeConfig> = {}): BridgeConfig 
   } else if (!merged.pi.cliPath) {
     merged.pi.cliPath = resolvePiCli();
   }
+  if (merged.backend === "pi") piWorkerArgs(merged.pi);
   return merged;
 }
 
@@ -177,3 +181,12 @@ function deepMerge<T>(base: T, override: Partial<T>): T {
 }
 
 export { isAbsolute };
+
+function parsePiArgsEnv(): string[] {
+  if (!process.env.PI_BRIDGE_PI_ARGS) return [];
+  try {
+    const args = JSON.parse(process.env.PI_BRIDGE_PI_ARGS);
+    if (!Array.isArray(args) || args.some(arg => typeof arg !== "string")) throw new Error();
+    return args;
+  } catch { throw new BridgeError(ExitCode.BAD_REQUEST, "PI_BRIDGE_PI_ARGS must be a JSON string array"); }
+}

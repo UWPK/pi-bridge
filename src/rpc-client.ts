@@ -291,7 +291,7 @@ export class PiRpcProcess {
   // --- documented commands (docs/rpc-commands.md) ---
 
   getState(timeoutMs?: number) {
-    return this.command<{ model?: { provider: string; id: string }; sessionFile?: string; sessionId?: string; messageCount?: number; isStreaming?: boolean }>("get_state", {}, timeoutMs);
+    return this.command<{ model?: { provider: string; id: string }; thinkingLevel?: string; sessionFile?: string; sessionId?: string; messageCount?: number; isStreaming?: boolean }>("get_state", {}, timeoutMs);
   }
 
   prompt(message: string, timeoutMs?: number) {

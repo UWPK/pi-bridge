@@ -1,3 +1,4 @@
+import { piWorkerArgs, validatePiWorkerSupport } from "./worker-profile.js";
 import { configuredModel } from "./config.js";
 import { createWriteStream, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -63,6 +64,8 @@ export interface RunOptions {
 }
 
 interface WorkerSlot {
+  actualModel?: string | null;
+  thinkingLevel?: string | null;
   process: PiRpcProcess;
   workspace: string;
   model: string;
@@ -90,6 +93,7 @@ function raceAbort<T>(p: Promise<T>, signal: AbortSignal | undefined, message = 
 
 export class PiSupervisor {
   private slot: WorkerSlot | null = null;
+  private profileValidated = false;
   private currentRun: { runId: string; taskId: string; cancel: () => void } | null = null;
   /** Set when a killed worker could not be confirmed dead; blocks the next run. */
   private stuckReason: string | null = null;
@@ -161,6 +165,11 @@ export class PiSupervisor {
       if (this.slot === old) this.slot = null;
     }
 
+    const loaderArgs = this.cfg.backend === "dsh" ? [] : piWorkerArgs(this.cfg.pi);
+    if (!this.profileValidated && this.cfg.backend !== "dsh") {
+      validatePiWorkerSupport(this.cfg.pi, loaderArgs);
+      this.profileValidated = true;
+    }
     const [provider, modelId] = splitModel(model);
     const proc = new PiRpcProcess({
       cliPath: this.cfg.pi.cliPath,
@@ -169,7 +178,7 @@ export class PiSupervisor {
       cwd: workspace,
       provider,
       model: modelId,
-      args: ["--session-dir", join(this.cfg.home, "sessions")],
+      args: ["--session-dir", join(this.cfg.home, "sessions"), ...loaderArgs],
     });
     // Cancel during startup must still tear the freshly-spawned process down; the
     // stop is single-flight with the catch-path stop below and its result is awaited.
@@ -189,7 +198,9 @@ export class PiSupervisor {
         await proc.setModel(provider, modelId, 30_000);
         this.throwIfAborted(signal);
       }
-      this.slot = { process: proc, workspace, model };
+      const ready = state.model && actual !== model && provider && modelId ? await proc.getState(this.cfg.worker.startupTimeoutMs) : state;
+      this.throwIfAborted(signal);
+      this.slot = { process: proc, workspace, model, actualModel: ready.model ? `${ready.model.provider}/${ready.model.id}` : null, thinkingLevel: ready.thinkingLevel ?? null };
       return proc;
     } catch (err) {
       const ok = await proc.stop(2000);
@@ -246,13 +257,17 @@ export class PiSupervisor {
   }
 
   /** Cached worker status for diagnostics that must not disturb an active run. */
-  workerSnapshot(): { alive: boolean; pid: number | null; workspace: string | null; model: string | null; stuck: string | null } {
+  workerSnapshot() {
     return {
       alive: this.isAlive,
       pid: this.pid,
       workspace: this.workspace,
       model: this.model,
       stuck: this.stuckReason,
+      actualModel: this.slot?.actualModel ?? null,
+      thinkingLevel: this.slot?.thinkingLevel ?? null,
+      profile: this.cfg.backend === "dsh" ? "dsh-headless" : this.cfg.pi.profile ?? "inherit",
+      loaderArgs: this.cfg.backend === "dsh" ? [] : piWorkerArgs(this.cfg.pi),
     };
   }
 

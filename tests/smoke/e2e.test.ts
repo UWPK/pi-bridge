@@ -1,3 +1,4 @@
+import { piWorkerArgs, validatePiWorkerSupport } from "../../src/worker-profile.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -6,14 +7,14 @@ import { dirname, join, resolve } from "node:path";
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createFixtureGitProject } from "../fixtures/create-fixture.js";
-import { resolvePiCli } from "../../src/config.js";
+import { defaultConfig, resolvePiCli } from "../../src/config.js";
 import { PiRpcProcess } from "../../src/rpc-client.js";
 
 /**
  * End-to-end smoke test against the REAL pi CLI and this machine's credentials.
  *
- * It is honest about availability: if the real model cannot be reached (no
- * credentials / offline / provider error) the test SKIPS with a clear reason. It
+ * Disabled live tests skip. Once explicitly enabled, unavailable credentials,
+ * network/model errors and failed acceptance fail the test. It
  * never fabricates a pass. This is the only test that proves the real Codex ->
  * Bridge -> pi DeepSeek path (需求文档 §10.1 AC-03/04).
  */
@@ -23,6 +24,8 @@ const cli = resolve(here, "..", "..", "src", "cli.js");
 
 const PROVIDER = process.env.BRIDGE_PI_PROVIDER || "";
 const MODEL = process.env.BRIDGE_PI_MODEL || "";
+const SMOKE_SECONDS = Number(process.env.BRIDGE_SMOKE_TIMEOUT_SECONDS || 300);
+if (!Number.isInteger(SMOKE_SECONDS) || SMOKE_SECONDS < 30 || SMOKE_SECONDS > 3600) throw new Error("BRIDGE_SMOKE_TIMEOUT_SECONDS must be an integer from 30 to 3600");
 
 interface ProbeResult {
   available: boolean;
@@ -41,26 +44,32 @@ async function probeCredentials(): Promise<ProbeResult> {
   }
 
   const home = mkdtempSync(join(tmpdir(), "bridge-probe-"));
+  const pi = { ...defaultConfig().pi, cliPath: piCli };
+  const loaderArgs = piWorkerArgs(pi);
+  validatePiWorkerSupport(pi, loaderArgs);
+  const probeAbort = new AbortController();
   const proc = new PiRpcProcess({
     cliPath: piCli,
     nodePath: process.execPath,
     cwd: home,
     provider: PROVIDER,
     model: MODEL,
-    args: ["--no-session"],
+    args: ["--no-session", ...loaderArgs],
   });
   try {
     await proc.start(30_000);
+    const completion = waitSettled(proc, SMOKE_SECONDS * 1000, probeAbort.signal);
     const resp = await proc.prompt("Reply with exactly: BRIDGE_SMOKE_OK", 30_000);
     if (!resp.success) {
       return { available: false, reason: `prompt 被拒绝: ${resp.error ?? "unknown"}`, piCli };
     }
-    const settled = await waitSettled(proc, 90_000);
-    if (!settled) return { available: false, reason: "模型未在 90s 内 agent_settled（可能无凭据/网络）", piCli };
+    const settled = await completion;
+    if (!settled) return { available: false, reason: `模型未在 ${SMOKE_SECONDS}s 内 agent_settled`, piCli };
     return { available: true, reason: "ok", piCli };
   } catch (err) {
     return { available: false, reason: `无法与真实 pi 通信: ${(err as Error).message}`, piCli };
   } finally {
+    probeAbort.abort();
     try {
       await proc.stop(3000);
     } catch {
@@ -70,19 +79,22 @@ async function probeCredentials(): Promise<ProbeResult> {
   }
 }
 
-function waitSettled(proc: PiRpcProcess, timeoutMs: number): Promise<boolean> {
+function waitSettled(proc: PiRpcProcess, timeoutMs: number, signal: AbortSignal): Promise<boolean> {
   return new Promise((resolveSettled) => {
-    const timer = setTimeout(() => {
+    let unsub = () => {};
+    const finish = (value: boolean) => {
+      clearTimeout(timer);
       unsub();
-      resolveSettled(false);
-    }, timeoutMs);
-    const unsub = proc.onEvent((event) => {
-      if (event.type === "agent_settled") {
-        clearTimeout(timer);
-        unsub();
-        resolveSettled(true);
-      }
+      signal.removeEventListener("abort", onAbort);
+      resolveSettled(value);
+    };
+    const onAbort = () => finish(false);
+    const timer = setTimeout(onAbort, timeoutMs);
+    unsub = proc.onEvent(event => {
+      if (event.type === "agent_settled") finish(!(event as { aborted?: boolean }).aborted);
     });
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
   });
 }
 
@@ -90,7 +102,7 @@ function runCli(args: string[], env: Record<string, string> = {}) {
   const res = spawnSync(process.execPath, [cli, ...args], {
     encoding: "utf8",
     env: { ...process.env, ...env },
-    timeout: 300_000,
+    timeout: (SMOKE_SECONDS + 60) * 1000,
   });
   return { code: res.status ?? -1, stdout: res.stdout ?? "", stderr: res.stderr ?? "" };
 }
@@ -98,6 +110,7 @@ function runCli(args: string[], env: Record<string, string> = {}) {
 test("smoke: real pi RPC handshake and a real model turn", async (t) => {
   const probe = await probeCredentials();
   if (!probe.available) {
+    if (process.env.BRIDGE_LIVE_TEST === "1") assert.fail(probe.reason);
     t.skip(`SKIP: 真实 pi 模型不可用 -> ${probe.reason}`);
     return;
   }
@@ -109,12 +122,14 @@ test("smoke: real pi RPC handshake and a real model turn", async (t) => {
 test("smoke: full CLI daemon -> real pi worker -> real verifier (AC-03/04)", async (t) => {
   const probe = await probeCredentials();
   if (!probe.available) {
+    if (process.env.BRIDGE_LIVE_TEST === "1") assert.fail(probe.reason);
     t.skip(`SKIP: 真实 pi 模型不可用 -> ${probe.reason}`);
     return;
   }
   const fx = createFixtureGitProject("smoke-e2e");
   const home = mkdtempSync(join(tmpdir(), "bridge-smoke-home-"));
   const env = { BRIDGE_HOME: home, BRIDGE_PI_CLI: probe.piCli! };
+  let passed = false;
 
   try {
     const up = runCli(["up", "--json"], env);
@@ -136,11 +151,11 @@ test("smoke: full CLI daemon -> real pi worker -> real verifier (AC-03/04)", asy
             objective: "Create the file src/result.txt with the single line 'done'. Do not modify any other file.",
             // Explicit trusted-host opt-in: whole workspace + write + network.
             // (The conservative default is offline and would be refused fail-closed.)
-            policy: { allowWrite: true, allowNetwork: true },
+            policy: { allowWrite: true, allowNetwork: true, timeoutSeconds: SMOKE_SECONDS },
             acceptance: [
               {
                 kind: "command",
-                command: [process.execPath, "-e", "const fs=require('fs');process.exit(fs.existsSync('src/result.txt')?0:1)"],
+                command: [process.execPath, "-e", "const fs=require('fs');process.exit(fs.readFileSync('src/result.txt','utf8').trim()==='done'?0:1)"],
                 timeoutSeconds: 30,
               },
             ],
@@ -159,6 +174,8 @@ test("smoke: full CLI daemon -> real pi worker -> real verifier (AC-03/04)", asy
 
       // Honesty invariant: the reported status must match the real verifier evidence.
       const verifyResult = handoff.verification?.[0]?.result;
+      assert.equal(handoff.status, "passed", JSON.stringify(handoff));
+      assert.equal(handoff.verification?.[0]?.exitCode, 0);
       assert.equal(handoff.evidenceLevel, "verified", "handoff must carry real verifier evidence");
       if (handoff.status === "passed") {
         assert.equal(verifyResult, "pass");
@@ -175,12 +192,15 @@ test("smoke: full CLI daemon -> real pi worker -> real verifier (AC-03/04)", asy
       const doc = runCli(["doctor", "--json"], env);
       const docJson = JSON.parse(doc.stdout);
       assert.equal(docJson.daemonRunning, true);
+      passed = true;
     } finally {
       const down = runCli(["down", "--json"], env);
       assert.equal(down.code, 0);
     }
   } finally {
-    fx.cleanup();
-    rmSync(home, { recursive: true, force: true });
+    if (passed) {
+      fx.cleanup();
+      rmSync(home, { recursive: true, force: true });
+    } else { t.diagnostic(`Failed smoke evidence retained: ${home}; workspace: ${fx.dir}`); }
   }
 });

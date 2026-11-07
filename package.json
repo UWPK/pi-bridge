@@ -1,6 +1,6 @@
 {
   "name": "@uwpk/pi-bridge",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Portable Codex bridge for Pi and DeepSeek Harness with skill CLI and stdio MCP",
   "type": "module",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:unit": "node --test --test-timeout=120000 dist/tests/unit/*.test.js",
     "test:integration": "node --test --test-timeout=120000 dist/tests/integration/*.test.js",
-    "test:smoke": "node --test --test-timeout=300000 dist/tests/smoke/*.test.js",
+    "test:smoke": "node --test --test-timeout=900000 dist/tests/smoke/*.test.js",
     "test": "npm run build && npm run test:unit && npm run test:integration && npm run test:portable",
     "prepack": "npm run build",
     "test:portable": "node --test --test-timeout=120000 tests/portable/*.test.mjs"

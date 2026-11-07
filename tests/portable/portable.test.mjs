@@ -14,6 +14,10 @@ const temp = mkdtempSync(join(tmpdir(), 'pi-bridge-portable-'));
 const pi = join(temp, 'fake-pi.cjs');
 const send = String.raw`
 const fs=require('node:fs');
+if(process.argv.includes('--help')){console.log('--no-extensions --no-mcp --no-skills --no-prompt-templates --extension --skill --prompt-template --thinking');process.exit(0);}
+if(process.env.PI_BRIDGE_WORKER_PROFILE==='minimal'){
+ for(const flag of ['--no-extensions','--no-mcp','--no-skills','--no-prompt-templates','--extension']) if(!process.argv.includes(flag)) throw new Error('Missing worker flag '+flag);
+}
 if(process.argv.includes('--provider') || process.argv.includes('--model')) throw new Error('Unexpected override of Pi defaults');
 require('node:readline').createInterface({input:process.stdin}).on('line',line=>{
  const c=JSON.parse(line); const emit=o=>process.stdout.write(JSON.stringify(o)+'\n');
@@ -24,7 +28,7 @@ require('node:readline').createInterface({input:process.stdin}).on('line',line=>
  case 'get_available_models':reply({models:[{provider:'fixture',id:'model'}]});break;
  case 'get_last_assistant_text':reply({text:'Created hello.txt'});break;
  case 'get_session_stats':reply({tokens:{input:1,output:1,total:2},cost:0});break;
- case 'prompt':reply({disposition:'started'});emit({type:'agent_start'});fs.writeFileSync('hello.txt','hello\n');emit({type:'agent_settled',aborted:false});break;
+ case 'prompt':reply({disposition:'started'});emit({type:'agent_start'});emit({type:'agent_end'});setTimeout(()=>{fs.writeFileSync('hello.txt','hello\n');emit({type:'agent_settled',aborted:false});},500);break;
  default:reply({});
  }
 });`;
@@ -62,7 +66,7 @@ test('MCP handshake, validation, isolated daemon, fake Pi task and real verifier
  const git=(...args)=>{const r=spawnSync('git',args,{cwd:workspace,encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
  git('init','-q');git('config','user.name','Bridge Test');git('config','user.email','test@example.invalid');
  writeFileSync(join(workspace,'README.md'),'fixture\n');git('add','.');git('commit','-qm','initial');
- const transport=new StdioClientTransport({command:process.execPath,args:[join(root,'bin/pi-bridge-mcp.mjs')],env,stderr:'pipe'});
+ const transport=new StdioClientTransport({command:process.execPath,args:[join(root,'bin/pi-bridge-mcp.mjs')],env:{...env,PI_BRIDGE_WORKER_PROFILE:'minimal',PI_BRIDGE_PI_ARGS:JSON.stringify(['--extension',pi])},stderr:'pipe'});
  const client=new Client({name:'portable-test',version:'1.0.0'});
  let diagnostics='';transport.stderr?.on('data',d=>diagnostics+=d);
  await client.connect(transport);
@@ -74,6 +78,7 @@ test('MCP handshake, validation, isolated daemon, fake Pi task and real verifier
   assert.equal((await call('status',{instance:'../escape'})).isError,true);
   const up=await call('up',{apply:true});assert.equal(up.isError,false,JSON.stringify(up));
   const other=await call('status',{instance:'chat-other'});assert.equal(other.isError,true);
+  const doctor=await call('doctor');assert.equal(doctor.isError,false,JSON.stringify(doctor));assert.match(doctor.content[0].text,/minimal/);
   assert.equal((await call('authorize',{directory:workspace,apply:true})).isError,false);
   const task={schemaVersion:'2.0',title:'fixture task',workspace,objective:'Create hello.txt',mode:'standard',policy:{allowWrite:true,allowNetwork:true},acceptance:[{kind:'command',command:[process.execPath,'-e',"process.exit(require('fs').readFileSync('hello.txt','utf8').trim()==='hello'?0:1)"]}]};
   const submitted=await call('delegate',{task,apply:true});assert.equal(submitted.isError,false,JSON.stringify(submitted));
@@ -87,4 +92,15 @@ test('MCP handshake, validation, isolated daemon, fake Pi task and real verifier
  } finally {
   try { await call('down',{apply:true}); } finally { await client.close(); }
  }
+});
+
+test('MCP config preserves worker selection without exporting unrelated secrets', () => {
+ const args=JSON.stringify(['--extension',pi]);
+ const result=cli(['mcp-config'],{PI_BRIDGE_WORKER_PROFILE:'minimal',PI_BRIDGE_PI_ARGS:args,UNRELATED_API_KEY:'do-not-export-this'});
+ assert.equal(result.status,0,result.stderr);
+ assert.match(result.stdout,/\[mcp_servers\.pi_bridge\.env\]/);
+ assert.match(result.stdout,/PI_BRIDGE_WORKER_PROFILE = "minimal"/);
+ assert.match(result.stdout,/BRIDGE_PI_CLI = /);
+ assert.match(result.stdout,/PI_BRIDGE_PI_ARGS = /);
+ assert.ok(!result.stdout.includes('do-not-export-this'));
 });

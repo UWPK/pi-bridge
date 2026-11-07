@@ -55,6 +55,8 @@ Provider/model are optional. Omitting model passes no provider/model override to
 
 For DSH selection and capability differences read [dsh.md](dsh.md).
 
+For optional minimal Pi workers, explicit policy extensions, MCP environment export and a configurable 300-second upgrade smoke check, read [worker-profiles.md](worker-profiles.md).
+
 ## Recovery
 
 Use status and a small log tail after interruption. Do not replay an uncertain task blindly. `doctor` with no daemon returns unavailable (exit 4). A running daemon alone does not prove RPC health or a successful model task. Persisted tasks and logs belong to their instance. Failures to terminate a worker block subsequent work until explicit recovery; inspect active tasks before stopping an instance.
