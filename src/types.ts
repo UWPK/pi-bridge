@@ -172,6 +172,8 @@ export interface MigrationRecord {
 
 /** High level runtime config (see src/config.ts for loading/merging). */
 export interface BridgeConfig {
+  backend?: "pi" | "dsh";
+  dsh?: { cliPath: string };
   home: string;
   ipc: {
     host: string;

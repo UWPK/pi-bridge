@@ -1,21 +1,21 @@
 # Pi Bridge
 
-将 Codex 的有边界任务交给已安装的 Pi 执行，并返回独立验收证据。提供 **Skill、命令行和 stdio MCP** 三种入口，使用同一套运行时。
+将 Codex 的有边界任务交给已安装的 Pi 或 DeepSeek Harness（DSH）执行，并返回独立验收证据。提供 **Skill、命令行和 stdio MCP** 三种入口，使用同一套运行时。
 
 - Windows、macOS、Linux 使用相同的 Node 程序，无需 PowerShell。
-- 自动查找 Pi，支持 npm 全局安装的 Pi、JS 入口和原生可执行程序。
-- 默认继承 Pi 的模型、认证、代理和插件；可以显式指定 provider/model。
+- 自动查找所选后端，支持 Pi/DSH 的 npm 全局安装、JS 入口和原生可执行程序。
+- Pi 默认继承自己的模型、认证、代理和插件，也可指定 provider/model。DSH 继承自己的 headless 配置。
 - 每个 Codex 聊天使用独立实例，保存任务、日志和恢复状态。
 - 常驻 daemon 复用空闲 Pi worker；取消、超时、独立验收和失败恢复保持统一。
 
 ## 安装
 
-前提：**Node.js >=22.19（推荐 24 LTS）、npm、Git、Codex，以及已配置可用模型的 Pi**。先确认 `pi --help` 与 `codex --help` 正常。
+前提：**Node.js >=22.19（推荐 24 LTS）、npm、Git、Codex，以及已配置可用模型的 Pi 或 DSH**。先确认所选后端的 `pi --help` 或 `dsh --help` 与 `codex --help` 正常。DSH 当前发布版要求 Node >=24.9.0。
 
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.3.0/uwpk-pi-bridge-0.3.0.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.0/uwpk-pi-bridge-0.4.0.tgz
 pi-bridge check-local
 ```
 
@@ -76,10 +76,40 @@ codex mcp add pi_bridge -- pi-bridge-mcp
 
 如果只安装 MCP，在 Codex 项目说明中写明：委派给 Pi 时使用 `pi_bridge_*` 工具，每个聊天使用独立 instance，提交后轮询状态并验收 diff 和验证命令。
 
+## 选择 Pi 或 DSH
+
+v0.4.0 新增实验性 DSH headless 支持；模型服务链路需在用户环境另行验收。
+
+Pi 保持默认，可沿用已有命令。DSH 通过官方 `dsh --profile headless <task>` 接口运行：
+
+```text
+pi-bridge check-local --backend dsh
+pi-bridge up --backend dsh --instance my-chat --apply --json
+pi-bridge authorize --backend dsh --instance my-chat --dir <absolute-workspace> --apply --json
+pi-bridge delegate --backend dsh --instance my-chat --task-file task.json --apply --wait --json
+pi-bridge status --backend dsh --instance my-chat --all --json
+```
+
+MCP 调用加入 `backend:"dsh"`，同一任务始终使用相同 backend 和 instance。DSH 实例在状态根目录下另存于 dsh/<instance>，与同名 Pi 实例隔离。只使用 DSH 时无需安装 Pi。
+
+| 能力 | Pi 后端 | DSH headless 后端 |
+| --- | --- | --- |
+| 启动接口 | Pi RPC | DSH 官方 headless CLI |
+| 会话 | 常驻 RPC worker；可按会话恢复 | 每个任务创建新会话；resume 重新执行任务 |
+| 任务状态、验收、超时、取消 | 支持 | 支持 |
+| 细粒度轮次、工具与用量 | 依据 Pi 提供的事件 | 当前适配层不提供 |
+| maxWorkerTurns | 按 RPC turn_start 事件限制 | 无法约束 DSH 内部轮次；使用主机任务超时 |
+| 指定模型 | 可选 provider/model | 使用 DSH 自身配置，拒绝 task.model 覆盖 |
+| doctor | 检查 Pi RPC | 检查适配层 RPC；实际 DSH/模型需真实任务验证 |
+
+DSH 的 SDK/ACP 提供更丰富的标准输入输出接入能力。本版本选择 headless 实现第一阶段兼容，保持明确的功能边界。DSH 输出的推理 stderr 会被排空，适配层仅回传最终 stdout 摘要和退出状态。完整说明见 [DSH 后端](skills/pi-bridge/references/dsh.md)。
+
 ## 配置
 
 | 设置 | 作用 |
 | --- | --- |
+| `BRIDGE_BACKEND` / `--backend` | 选择 pi 或 dsh，默认 pi |
+| `BRIDGE_DSH_CLI` | DSH 的 JS 入口或原生程序绝对路径 |
 | `BRIDGE_PI_CLI` | Pi 的 JS 入口或原生可执行文件绝对路径 |
 | `BRIDGE_PI_PROVIDER` / `BRIDGE_PI_MODEL` | 可选模型覆盖；留空使用 Pi 默认模型 |
 | `PI_BRIDGE_STATE_ROOT` / `--state-root` | Bridge 状态根目录 |
@@ -93,7 +123,7 @@ Windows 默认状态位于 LOCALAPPDATA/pi-bridge，macOS 为 ~/Library/Applicat
 
 运行环境使用 Pi 的现有主机权限。目录授权用于任务路由；更严格的文件和网络隔离需要运行环境提供。当前执行器接受显式 allowWrite:true、allowNetwork:true 的可信 host 整工作区任务；无法实施的只读、断网和子目录隔离要求会被拒绝。任务 constraints 表达用户的修改范围，Codex 仍需检查实际 diff。
 
-只有独立验收命令通过才能给出 passed；worker 仅声明完成最多得到 partial。真实模型调用依赖用户自己的 Pi 服务访问和额度。本项目不修改认证或声明未经测量的额度节省。
+只有独立验收命令通过才能给出 passed；worker 仅声明完成最多得到 partial。真实模型调用依赖用户所选后端的服务访问和额度。本项目不修改认证或声明未经测量的额度节省。
 
 ## 验证
 
@@ -104,7 +134,7 @@ npm run test:smoke
 
 默认测试使用模拟 Pi，不请求模型。smoke 默认明确跳过真实服务；需要显式设置 BRIDGE_LIVE_TEST=1 才会尝试真实模型请求。
 
-发布验证覆盖 Windows 上的任务状态机、取消与恢复、真实子进程、独立验收、MCP 握手与工具调用、聊天实例隔离和安装器。macOS/Linux 已按可移植 Node API 实现；尚未完成各平台实机完整模型验收。模拟 Pi 测试通过与真实模型可用性分别记录。
+当前版本的 110 项离线测试覆盖 Windows 上的任务状态机、取消与恢复、真实子进程、独立验收、MCP 握手与工具调用、聊天实例隔离和安装器。官方 DSH 0.2.2-rc.1 的安装、版本帮助和 Bridge 发现检查已在独立目录验证；真实 DSH 模型任务尚未验收。macOS/Linux 已按可移植 Node API 实现；尚未完成各平台实机完整模型验收。模拟 Pi 测试通过与真实模型可用性分别记录。
 
 ## 来源
 

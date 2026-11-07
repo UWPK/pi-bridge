@@ -1,24 +1,26 @@
 ---
 name: pi-bridge
-description: Delegate explicitly requested, bounded tasks from Codex to an installed Pi coding agent through the portable pi-bridge CLI or MCP tools, then check actual changes and independent acceptance results.
+description: Delegate explicitly requested, bounded tasks from Codex to an installed Pi coding agent or DeepSeek Harness (DSH) through the portable pi-bridge CLI or MCP tools, then check actual changes and independent acceptance results.
 ---
 
 # Pi Bridge
 
-Use when the user explicitly requests Pi delegation. Codex plans, sets the workspace and acceptance criteria, and reviews results; Pi performs the bounded task. Pi workers must complete their task without recursively invoking this bridge.
+Use when the user explicitly requests delegation to Pi or DSH. Codex plans, sets the workspace and acceptance criteria, and reviews results; Pi performs the bounded task. Pi workers must complete their task without recursively invoking this bridge.
 
 ## Runtime discovery
 
-Requires Node.js >=22.19 (24 LTS recommended), Git for diff evidence, and an installed Pi with working model access. Windows, macOS and Linux use the same Node entrypoints. See [runtime.md](references/runtime.md) for installation, MCP setup and task contracts.
+Requires Node.js >=22.19 (24 LTS recommended), Git for diff evidence, and a selected backend (Pi or DSH) with working model access. DSH currently requires Node >=24.9.0. Windows, macOS and Linux use the same Node entrypoints. See [runtime.md](references/runtime.md) for installation, MCP setup and task contracts.
 
-Use `pi-bridge check-local` to locate Pi without model calls. A custom installation can set BRIDGE_PI_CLI to its JS entrypoint or native executable. Keep existing Pi authentication, settings, plugins and proxy configuration. The default model comes from Pi; BRIDGE_PI_PROVIDER / BRIDGE_PI_MODEL optionally select a user-authorized alternative.
+Use `pi-bridge check-local` to locate Pi without model calls. Select DSH with `--backend dsh` or MCP argument backend:"dsh" and read [dsh.md](references/dsh.md). DSH can run without Pi installed. A custom installation can set BRIDGE_PI_CLI to its JS entrypoint or native executable. Keep existing Pi authentication, settings, plugins and proxy configuration. The default model comes from Pi; BRIDGE_PI_PROVIDER / BRIDGE_PI_MODEL optionally select a user-authorized alternative.
 
 ## Choose one interface
 
 - If `pi_bridge_*` MCP tools are available, use them. Every call requires the same unique `instance` for this Codex chat, normally `chat-<CODEX_THREAD_ID>` or `chat-<CODEX_SESSION_ID>`. For hosts without these values, establish a unique instance name once and reuse it.
 - Otherwise use `pi-bridge` on PATH, or `node <installed-package>/bin/pi-bridge.mjs`. CLI selects the Codex thread identity automatically or requires `--instance NAME`. No shared default daemon is created.
 
-State is separated by instance. Do not reuse another chat's instance or run competing writers in one workspace.
+Use the same backend for all calls concerning one task. DSH runs a fresh headless session per task/resume, uses its own model configuration, and cannot expose or limit its internal turn count through this adapter. Its host timeout and independent verifier remain active.
+
+State is separated by backend and instance. Do not reuse another chat's instance or run competing writers in one workspace.
 
 ## Delegate and review
 

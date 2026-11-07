@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { join, isAbsolute, resolve, dirname, delimiter } from "node:path";
 import { existsSync, realpathSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,17 +16,23 @@ import { BridgeError, ExitCode } from "./errors.js";
  *   3. `where pi` shim + sibling node_modules path
  */
 export function resolvePiCli(explicit?: string): string {
-  const supplied = explicit || process.env.BRIDGE_PI_CLI;
+  return resolveAgentCli("pi", ["@earendil-works/pi-coding-agent", "@mariozechner/pi-coding-agent"], explicit || process.env.BRIDGE_PI_CLI);
+}
+export function resolveDshCli(explicit?: string): string {
+  return resolveAgentCli("dsh", ["@deepseek-ai/dsh"], explicit || process.env.BRIDGE_DSH_CLI);
+}
+function resolveAgentCli(name: string, packages: string[], supplied?: string): string {
+
   if (supplied) {
     const value = resolve(supplied);
     if (existsSync(value)) return value;
-    throw new BridgeError(ExitCode.UNAVAILABLE, `Pi entrypoint not found: ${value}`);
+    throw new BridgeError(ExitCode.UNAVAILABLE, `${name} entrypoint not found: ${value}`);
   }
-  const packages = ["@earendil-works/pi-coding-agent", "@mariozechner/pi-coding-agent"];
+
   const roots = new Set<string>();
   for (const dir of (process.env.PATH || "").split(delimiter).filter(Boolean)) {
-    for (const name of process.platform === "win32" ? ["pi.exe"] : ["pi"]) {
-      const command = join(dir, name);
+    for (const binName of process.platform === "win32" ? [`${name}.exe`] : [name]) {
+      const command = join(dir, binName);
       if (existsSync(command)) {
         const actual = realpathSync(command);
         // npm Unix symlinks point directly at a JS entrypoint; native Pi is also supported.
@@ -49,15 +56,15 @@ export function resolvePiCli(explicit?: string): string {
     if (!existsSync(manifest)) continue;
     try {
       const data = JSON.parse(readFileSync(manifest, "utf8"));
-      const entry = typeof data.bin === "string" ? data.bin : data.bin?.pi;
+      const entry = typeof data.bin === "string" ? data.bin : data.bin?.[name];
       if (entry && existsSync(join(base, pkg, entry))) return realpathSync(join(base, pkg, entry));
     } catch { /* An unrelated or incomplete installation is not usable. */ }
   }
-  throw new BridgeError(ExitCode.UNAVAILABLE, "Pi not found. Put pi on PATH or set BRIDGE_PI_CLI to its JS entrypoint or native executable.");
+  throw new BridgeError(ExitCode.UNAVAILABLE, `${name} not found. Put ${name} on PATH or set BRIDGE_${name.toUpperCase()}_CLI to its JS entrypoint or native executable.`);
 }
 
 export function configuredModel(cfg: BridgeConfig): string {
-  if (!cfg.pi.model) return "default";
+  if (cfg.backend === "dsh" || !cfg.pi.model) return "default";
   return cfg.pi.model.includes("/") || !cfg.pi.provider ? cfg.pi.model : `${cfg.pi.provider}/${cfg.pi.model}`;
 }
 export function defaultHome(): string {
@@ -70,6 +77,8 @@ export function defaultConfig(overrides: Partial<BridgeConfig> = {}): BridgeConf
   const home = overrides.home ?? defaultHome();
   const base: BridgeConfig = {
     home,
+    backend: (process.env.BRIDGE_BACKEND || "pi") as "pi" | "dsh",
+    dsh: { cliPath: "" },
     ipc: { host: "127.0.0.1" },
     pi: {
       cliPath: "",
@@ -112,7 +121,11 @@ export function loadConfig(overrides: Partial<BridgeConfig> = {}): BridgeConfig 
     }
   }
   const merged = defaultConfig(deepMerge(fileCfg as Record<string, unknown>, overrides as Record<string, unknown>) as Partial<BridgeConfig>);
-  if (!merged.pi.cliPath) {
+  if (!["pi", "dsh"].includes(merged.backend || "pi")) throw new BridgeError(ExitCode.BAD_REQUEST, "backend must be pi or dsh");
+  if (merged.backend === "dsh") {
+    merged.dsh = { cliPath: resolveDshCli(merged.dsh?.cliPath) };
+    merged.pi.cliPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../bin/dsh-rpc-adapter.mjs");
+  } else if (!merged.pi.cliPath) {
     merged.pi.cliPath = resolvePiCli();
   }
   return merged;

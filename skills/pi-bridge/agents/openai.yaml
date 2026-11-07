@@ -1,6 +1,6 @@
 interface:
   display_name: "Pi Bridge"
-  short_description: "Delegate bounded Codex tasks to your installed Pi"
-  default_prompt: "Use $pi-bridge to delegate this bounded task to Pi and verify the result."
+  short_description: "Delegate bounded Codex tasks to your installed Pi or DSH"
+  default_prompt: "Use $pi-bridge to delegate this bounded task to Pi or DSH and verify the result."
 policy:
   allow_implicit_invocation: false

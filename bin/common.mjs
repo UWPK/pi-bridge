@@ -12,14 +12,16 @@ export function identity(argv = [], allowGenerated = false) {
     if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error(`${name} needs a value`);
     const value = args[i + 1]; args.splice(i, 2); return value;
   };
+  const backend = extract('--backend') || process.env.BRIDGE_BACKEND || 'pi';
+  if (!['pi','dsh'].includes(backend)) throw new Error('backend must be pi or dsh');
   const instance = extract('--instance') || process.env.PI_BRIDGE_INSTANCE || (process.env.CODEX_THREAD_ID || process.env.CODEX_SESSION_ID ? `chat-${process.env.CODEX_THREAD_ID || process.env.CODEX_SESSION_ID}` : allowGenerated ? `mcp-${randomUUID()}` : undefined);
   const root = extract('--state-root') || process.env.PI_BRIDGE_STATE_ROOT || (process.platform === 'win32' ? join(process.env.LOCALAPPDATA || homedir(), 'pi-bridge') : process.platform === 'darwin' ? join(homedir(), 'Library', 'Application Support', 'pi-bridge') : join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'pi-bridge'));
   if (instance && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$/.test(instance)) throw new Error('Invalid instance name');
-  return { instance, home: instance ? join(resolve(root), instance) : undefined, args };
+  return { instance, backend, root: resolve(root), home: instance ? join(resolve(root), ...(backend === "dsh" ? ["dsh"] : []), instance) : undefined, args };
 }
-export function runCli(home, args, input) {
+export function runCli(home, args, input, backend = "pi") {
   return new Promise((resolveResult, reject) => {
-    const child = spawn(process.execPath, [join(packageRoot, 'dist/src/cli.js'), ...args], { env: { ...process.env, BRIDGE_HOME: home }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, shell: false });
+    const child = spawn(process.execPath, [join(packageRoot, 'dist/src/cli.js'), ...args], { env: { ...process.env, BRIDGE_HOME: home, BRIDGE_BACKEND: backend }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, shell: false });
     let stdout = '', stderr = '', tooLarge = false;
     const timer = setTimeout(() => { child.kill(); reject(new Error('Bridge CLI timed out; inspect task status before retrying')); }, 90000);
     child.on('error', err => { clearTimeout(timer); reject(err); });

@@ -164,6 +164,7 @@ export class PiSupervisor {
     const [provider, modelId] = splitModel(model);
     const proc = new PiRpcProcess({
       cliPath: this.cfg.pi.cliPath,
+      env: this.cfg.backend === "dsh" ? { BRIDGE_DSH_CLI: this.cfg.dsh!.cliPath } : {},
       nodePath: this.cfg.pi.nodePath,
       cwd: workspace,
       provider,
@@ -412,6 +413,12 @@ export class PiSupervisor {
             const e = event as { message?: { role?: string; content?: unknown } };
             const text = extractText(e.message);
             if (text) finalText = text;
+            break;
+          }
+          case "bridge_worker_error": {
+            errorCode = "backend_failed";
+            stopReason = `error:${(event as unknown as { message?: string }).message || "backend failed"}`;
+            resolveSettle();
             break;
           }
           case "agent_settled": {

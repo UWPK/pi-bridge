@@ -7,7 +7,7 @@ import { packageRoot, identity } from './common.mjs';
 const help = `pi-bridge: portable Codex -> Pi bridge
 Commands: check-local, install-skill, mcp-config, up, doctor, models, authorize,
           delegate, status, logs, cancel, resume, down, config
-Use --instance NAME or a Codex thread identity. --state-root PATH is optional.
+Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi|dsh are optional.
 Mutating commands require --apply. Delegate trusted host tasks with a schema-2.0
 JSON task file (or --task-file - on stdin). Model/provider inherit Pi by default.
 install-skill --destination DIR defaults to ~/.agents/skills/pi-bridge.
@@ -32,10 +32,11 @@ try {
     process.exit(0);
   }
   if (action === 'check-local') {
-    const { resolvePiCli } = await import('../dist/src/config.js');
+    const { resolvePiCli, resolveDshCli } = await import('../dist/src/config.js');
     let pi; let error;
-    try { pi = resolvePiCli(); } catch (err) { error = err.message; }
-    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, architecture: process.arch, pi, error, model: process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
+    const backend = identity(original).backend;
+    try { pi = backend === "dsh" ? resolveDshCli() : resolvePiCli(); } catch (err) { error = err.message; }
+    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, backend, architecture: process.arch, executable: pi, ...(backend === "pi" ? {pi} : {dsh:pi}), error, model: backend === 'dsh' ? 'DSH configured model' : process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
     process.exit(pi ? 0 : 4);
   }
   const context = identity(original);
@@ -43,7 +44,7 @@ try {
   const mutations = ['up', 'down', 'authorize', 'delegate', 'cancel', 'resume', 'check'];
   if (mutations.includes(action) && !context.args.includes('--apply')) throw new Error(`${action} requires --apply`);
   const args = context.args.filter(value => value !== '--apply');
-  const child = spawn(process.execPath, [join(packageRoot, 'dist/src/cli.js'), ...args], { stdio: 'inherit', env: { ...process.env, BRIDGE_HOME: context.home }, shell: false, windowsHide: true });
+  const child = spawn(process.execPath, [join(packageRoot, 'dist/src/cli.js'), ...args], { stdio: 'inherit', env: { ...process.env, BRIDGE_HOME: context.home, BRIDGE_BACKEND: context.backend }, shell: false, windowsHide: true });
   child.on('error', err => { console.error(err.message); process.exitCode = 4; });
   child.on('exit', code => { process.exitCode = code ?? 1; });
 } catch (err) { console.error(err.message); process.exitCode = 2; }
