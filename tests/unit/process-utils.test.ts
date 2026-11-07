@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { terminateTree } from "../../src/process-utils.js";
+import { terminateTree, groupedSpawnOptions } from "../../src/process-utils.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -28,7 +28,7 @@ test("terminateTree kills a live tree so a grandchild cannot write a marker late
     `const cp=require('child_process');` +
     `cp.spawn(process.execPath,['-e',${JSON.stringify(inner)}],{stdio:'ignore'});` +
     `setTimeout(()=>{},60000);`;
-  const child = spawn(process.execPath, ["-e", script], { stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, ["-e", script], { stdio: ["ignore", "pipe", "pipe"], ...groupedSpawnOptions() });
   try {
     await sleep(300);
     const ok = await terminateTree(child, 8000);

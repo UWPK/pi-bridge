@@ -13,14 +13,14 @@ const cli = resolve(here, "..", "..", "src", "cli.js");
 function runCli(args: string[], env: Record<string, string> = {}) {
   const res = spawnSync(process.execPath, [cli, ...args], {
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: { ...process.env, BRIDGE_PI_CLI: process.execPath, ...env },
   });
   return { code: res.status ?? -1, stdout: res.stdout, stderr: res.stderr };
 }
 
 function runCliAsync(args: string[], env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [cli, ...args], { env: { ...process.env, ...env } });
+    const child = spawn(process.execPath, [cli, ...args], { env: { ...process.env, BRIDGE_PI_CLI: process.execPath, ...env } });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d));

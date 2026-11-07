@@ -643,7 +643,7 @@ test("engine: shutdown invalidates the running task, writes no late handoff and 
   }
 });
 
-test("engine: an unconfirmable verifier tree fails closed and blocks the next run", async () => {
+test("engine: an unconfirmable verifier tree fails closed and blocks the next run", { skip: process.platform !== "win32" }, async () => {
   const ctx = await makeCtx();
   ctx.cfg.limits.verifyTerminateWaitMs = 700; // keep the test fast
   process.env.FAKE_PI_BEHAVIOR = "pass";

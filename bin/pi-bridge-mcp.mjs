@@ -28,7 +28,7 @@ const tools = definitions.map(([action, description, properties, required]) => (
  inputSchema: { type: 'object', properties: { backend: { type: "string", enum: ["pi", "dsh"], description: "Execution backend; defaults to pi. Reuse the same backend for a task." }, instance: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$", description: "Unique Codex chat identity, e.g. chat-<thread-id>. Reuse for all tools in that chat." }, ...properties, ...(mutations.has(action) ? { apply: { type: 'boolean', const: true, description: 'Confirm the user-authorized state change' } } : {}) }, required: ["instance", ...required, ...(mutations.has(action) ? ['apply'] : [])], additionalProperties: false },
  annotations: { readOnlyHint: ['check', 'status', 'logs'].includes(action), destructiveHint: ['cancel', 'down'].includes(action), openWorldHint: ['delegate', 'resume', 'doctor', 'models'].includes(action) },
 }));
-const server = new Server({ name: 'pi-bridge', version: '0.4.2' }, { capabilities: { tools: {} } });
+const server = new Server({ name: 'pi-bridge', version: '0.4.3' }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 server.setRequestHandler(CallToolRequestSchema, async request => {
  try {

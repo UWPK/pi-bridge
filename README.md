@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.2/uwpk-pi-bridge-0.4.2.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.3/uwpk-pi-bridge-0.4.3.tgz
 pi-bridge check-local
 ```
 
@@ -154,3 +154,22 @@ npm run test:smoke
 ## 来源
 
 由已有的本地 codex-pi-bridge 运行时整理并改进。Pi 与 MCP SDK 使用各自许可，本包未包含模型凭据、私人运行数据或 Pi 本体。
+
+## Windows/macOS 安装验收入口
+
+npm 安装发布 tarball 后运行：
+
+```text
+pi-bridge setup --apply
+```
+
+该命令检查 Git、实际 Pi `--help` 和选定 worker 参数，安装技能并返回完整 MCP
+配置。相同技能可重复执行；已有不同内容不会覆盖。可用 `--destination PATH` 安装
+到共享技能库，`--pi-cli PATH` 指定已有 Pi 入口。插件较多时显式选用
+`--profile minimal`，并通过 `PI_BRIDGE_PI_ARGS` 保留任务需要的机器策略扩展。
+默认保持 inherit，避免静默移除用户插件。命令不修改 Pi 认证或 Codex MCP 配置，
+不请求模型；将输出的完整 MCP 配置注册后，再做真实任务验收。
+
+GitHub Actions 在 Windows x64、Mac Apple Silicon 和 Intel Mac 执行源码测试，
+再将 npm tarball 装入全新前缀，验证实际安装包的 setup、CLI、MCP 与独立验收。
+这些使用模拟 Pi，不能替代目标电脑自身的模型认证和在线任务测试。
