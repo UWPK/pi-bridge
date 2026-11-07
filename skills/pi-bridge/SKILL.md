@@ -9,7 +9,7 @@ Use when the user explicitly requests delegation to Pi or DSH. Codex plans, sets
 
 ## First installation and model choice
 
-For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
+For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. Use `pi-bridge setup --apply` after npm installation to check Pi/Git, install the skill and emit MCP configuration; it makes no model request and preserves changed skills. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
 
 When present, read the installation's `references/local-installation.md` for the actual local entrypoint and saved choices; this machine-specific file is generated locally and is not shipped by the generic package.
 

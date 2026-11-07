@@ -104,3 +104,16 @@ test('MCP config preserves worker selection without exporting unrelated secrets'
  assert.match(result.stdout,/PI_BRIDGE_PI_ARGS = /);
  assert.ok(!result.stdout.includes('do-not-export-this'));
 });
+
+test('setup checks Pi and installs idempotently without overwriting a changed skill', () => {
+ const destination=join(temp,'setup with spaces','pi-bridge');
+ const argv=['setup','--destination',destination,'--profile','minimal','--apply'];
+ const first=cli(argv); assert.equal(first.status,0,first.stderr);
+ const result=JSON.parse(first.stdout);assert.equal(result.ok,true);assert.equal(result.modelRequestMade,false);
+ assert.match(result.mcpConfig,/PI_BRIDGE_WORKER_PROFILE = "minimal"/);
+ const again=cli(argv);assert.equal(again.status,0,again.stderr);assert.equal(JSON.parse(again.stdout).reused,true);
+ writeFileSync(join(destination,'SKILL.md'),'user edits');
+ assert.equal(cli(argv).status,2);
+ assert.equal(readFileSync(join(destination,'SKILL.md'),'utf8'),'user edits');
+ assert.equal(cli(['setup','--apply','--pi-cli',join(temp,'missing.cjs')]).status,2);
+});

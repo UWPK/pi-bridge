@@ -151,7 +151,7 @@ test("runVerifier abort signal kills the tree and runs no further command", asyn
   }
 });
 
-test("runVerifier fails closed (UNAVAILABLE) when a killed command's tree cannot be confirmed", async () => {
+test("runVerifier fails closed (UNAVAILABLE) when a killed command's tree cannot be confirmed", { skip: process.platform !== "win32" }, async () => {
   const fx = createFixtureGitProject("verify-treekill");
   const logDir = mkdtempSync(join(tmpdir(), "bridge-vlog-"));
   // Force the tree-kill (taskkill) to be unavailable so termination cannot be proven

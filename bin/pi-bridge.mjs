@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { mcpConfig } from './mcp-config.mjs';
+import { setup } from './setup.mjs';
 import { existsSync, cpSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { packageRoot, identity } from './common.mjs';
 const help = `pi-bridge: portable Codex -> Pi bridge
-Commands: check-local, install-skill, mcp-config, up, doctor, models, authorize,
+Commands: setup, check-local, install-skill, mcp-config, up, doctor, models, authorize,
           delegate, status, logs, cancel, resume, down, config
 Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi|dsh are optional.
 Mutating commands require --apply. Delegate trusted host tasks with a schema-2.0
@@ -17,6 +18,10 @@ try {
   const original = process.argv.slice(2);
   const action = original[0] || 'help';
   if (['help', '--help', '-h'].includes(action)) { console.log(help); process.exit(0); }
+  if (action === 'setup') {
+    console.log(JSON.stringify(setup(original.slice(1)), null, 2));
+    process.exit(0);
+  }
   if (action === 'mcp-config') {
     console.log(mcpConfig());
     process.exit(0);

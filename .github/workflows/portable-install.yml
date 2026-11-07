@@ -1,0 +1,26 @@
+name: Windows and macOS package acceptance
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm test
+      - name: Pack and install into a fresh prefix
+        shell: bash
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          npm install --prefix "$RUNNER_TEMP/bridge-fresh" "$RUNNER_TEMP/uwpk-pi-bridge-"*.tgz
+      - name: Exercise installed package CLI, setup, MCP and independent verifier
+        shell: bash
+        run: |
+          export PI_BRIDGE_PACKAGE_ROOT="$RUNNER_TEMP/bridge-fresh/node_modules/@uwpk/pi-bridge"
+          npm run test:portable
