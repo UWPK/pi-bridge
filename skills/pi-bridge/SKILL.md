@@ -7,6 +7,12 @@ description: Delegate explicitly requested, bounded tasks from Codex to an insta
 
 Use when the user explicitly requests delegation to Pi or DSH. Codex plans, sets the workspace and acceptance criteria, and reviews results; Pi performs the bounded task. Pi workers must complete their task without recursively invoking this bridge.
 
+## First installation and model choice
+
+For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
+
+When present, read the installation's `references/local-installation.md` for the actual local entrypoint and saved choices; this machine-specific file is generated locally and is not shipped by the generic package.
+
 ## Runtime discovery
 
 Requires Node.js >=22.19 (24 LTS recommended), Git for diff evidence, and a selected backend (Pi or DSH) with working model access. DSH currently requires Node >=24.9.0. Windows, macOS and Linux use the same Node entrypoints. See [runtime.md](references/runtime.md) for installation, MCP setup and task contracts.

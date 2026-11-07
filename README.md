@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.1/uwpk-pi-bridge-0.4.1.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.2/uwpk-pi-bridge-0.4.2.tgz
 pi-bridge check-local
 ```
 
@@ -40,6 +40,10 @@ pi-bridge install-skill --apply
 默认安装至当前用户的 `~/.agents/skills/pi-bridge`。已有同名目录会停止；使用 `--destination <技能目录>` 安装到独立的代理配置环境。重启或新建 Codex 聊天，然后明确调用 `$pi-bridge`。
 
 技能运行时需要全局命令 `pi-bridge`，或由代理使用已安装包中 `bin/pi-bridge.mjs` 的绝对路径。程序保持安装后才可使用技能。
+
+## 首次配置时选择模型
+
+安装或重装时，skill 会先询问缺失的后端（Pi / DSH）及服务商、模型选择；当前聊天已给出的选择会直接沿用。复用后端现有认证，凭据在本机处理。Pi 模型选择保存到 Bridge 专用配置，日常 PiDeck 默认模型保持原样；DSH 使用自身配置。配置完成后，以实际安装包执行一次有独立验收的小任务。详见 [首次配置说明](skills/pi-bridge/references/setup.md)。
 
 ## 接入 MCP
 
