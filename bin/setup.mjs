@@ -28,6 +28,7 @@ export function setup(argv, env=process.env) {
   options[key.slice(2)]=value;
  }
  if(!options.apply) throw new Error('setup requires --apply');
+ if(env.BRIDGE_BACKEND && env.BRIDGE_BACKEND!=='pi') throw new Error('setup currently checks Pi; use the DSH setup reference for a DSH backend');
  if(!['win32','darwin','linux'].includes(process.platform)) throw new Error('Unsupported host platform');
  const git=spawnSync('git',['--version'],{encoding:'utf8',timeout:10000,windowsHide:true});
  if(git.status!==0) throw new Error('Git is required; install Git and retry setup');

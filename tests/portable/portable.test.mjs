@@ -116,4 +116,5 @@ test('setup checks Pi and installs idempotently without overwriting a changed sk
  assert.equal(cli(argv).status,2);
  assert.equal(readFileSync(join(destination,'SKILL.md'),'utf8'),'user edits');
  assert.equal(cli(['setup','--apply','--pi-cli',join(temp,'missing.cjs')]).status,2);
+ assert.equal(cli(argv,{BRIDGE_BACKEND:'dsh'}).status,2);
 });
