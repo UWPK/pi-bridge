@@ -60,3 +60,18 @@ For optional minimal Pi workers, explicit policy extensions, MCP environment exp
 ## Recovery
 
 Use status and a small log tail after interruption. Do not replay an uncertain task blindly. `doctor` with no daemon returns unavailable (exit 4). A running daemon alone does not prove RPC health or a successful model task. Persisted tasks and logs belong to their instance. Failures to terminate a worker block subsequent work until explicit recovery; inspect active tasks before stopping an instance.
+
+## One-command local setup
+
+After npm installs the release package, use `pi-bridge setup --apply` to verify
+Git and the actual Pi executable, validate worker flags, install the skill, and
+return a complete MCP snippet without editing client settings or credentials.
+Pi startup checks, including `--help`, may create a temporary trust lock under
+Pi's agent state directory (normally `~/.pi/agent`). On approval-gated hosts,
+allow only that directory's normal lock-file create/remove operation for Pi;
+do not grant write access to the whole home directory. If this is denied, use
+the host's approval flow for the specific Pi state path and rerun setup.
+Use `--destination PATH`, `--pi-cli PATH` or explicit `--profile minimal` when
+needed. Identical skills can be reused; changed skills are preserved and setup
+stops for review. Registration of the emitted MCP configuration and an actual
+model task remain separate from this no-model setup check.
