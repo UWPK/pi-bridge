@@ -68,9 +68,12 @@ Git and the actual Pi executable, validate worker flags, install the skill, and
 return a complete MCP snippet without editing client settings or credentials.
 Pi startup checks, including `--help`, may create a temporary trust lock under
 Pi's agent state directory (normally `~/.pi/agent`). On approval-gated hosts,
-allow only that directory's normal lock-file create/remove operation for Pi;
-do not grant write access to the whole home directory. If this is denied, use
-the host's approval flow for the specific Pi state path and rerun setup.
+the user must approve only that directory's normal lock-file create/remove
+operation through the host prompt. State the exact operation and path; do not
+have Pi draft or submit an approval request. If automatic review rejects it,
+stop and report the rejection instead of retrying through another route or
+widening permissions to the whole home directory. Resume setup only after the
+user approves through the host prompt.
 Use `--destination PATH`, `--pi-cli PATH` or explicit `--profile minimal` when
 needed. Identical skills can be reused; changed skills are preserved and setup
 stops for review. Registration of the emitted MCP configuration and an actual

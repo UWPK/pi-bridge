@@ -11,7 +11,7 @@ Use when the user explicitly requests delegation to Pi or DSH. Codex plans, sets
 
 For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
 
-Before Pi's startup check, ensure the host permits Pi to create and remove its short-lived trust lock in its own agent state directory (normally `~/.pi/agent`); use only that narrow path if approval is required. Do not widen permissions for the home directory. Follow [runtime.md](references/runtime.md) for one-command setup.
+Before Pi's startup check, Pi may need to create and remove a short-lived trust lock in its own agent state directory (normally `~/.pi/agent`). If host approval is required, explain the exact operation and path to the user and wait for the user to approve it through the host's own prompt. Never ask Pi to draft, submit or retry an approval request. If automatic review rejects the request, stop and report the rejection; do not seek an equivalent permission through another route or widen access to the home directory. Follow [runtime.md](references/runtime.md) for one-command setup.
 
 When present, read the installation's `references/local-installation.md` for the actual local entrypoint and saved choices; this machine-specific file is generated locally and is not shipped by the generic package.
 
