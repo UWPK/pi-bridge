@@ -11,6 +11,9 @@ Commands: setup, check-local, install-skill, mcp-config, up, doctor, models, aut
 Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi|dsh are optional.
 Mutating commands require --apply. Delegate trusted host tasks with a schema-2.0
 JSON task file (or --task-file - on stdin). Model/provider inherit Pi by default.
+setup --apply [--verify] [--destination DIR] [--pi-cli PATH] [--profile inherit|minimal]
+checks startup and installs the skill. --verify authorizes a small model task (may incur charges).
+Host permissions are unchanged. Successful verification cleans test files; failures retain evidence.
 install-skill --destination DIR defaults to ~/.agents/skills/pi-bridge.
 mcp-config prints a Codex TOML snippet; it does not edit Codex configuration.`;
 try {
@@ -18,6 +21,7 @@ try {
   const action = original[0] || 'help';
   if (['help', '--help', '-h'].includes(action)) { console.log(help); process.exit(0); }
   if (action === 'setup') {
+    if (original.includes('--help') || original.includes('-h')) { console.log(help); process.exit(0); }
     const { setup } = await import('./setup.mjs');
     const result = await setup(original.slice(1));
     console.log(JSON.stringify(result, null, 2));
