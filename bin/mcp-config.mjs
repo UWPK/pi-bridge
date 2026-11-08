@@ -5,10 +5,10 @@ import { resolvePiCli, resolveDshCli } from '../dist/src/config.js';
 // Copy only runtime selection settings. Credentials and unrelated environment stay private.
 export function mcpConfig(env = process.env) {
  const selected = {};
- for (const key of ['BRIDGE_PI_CLI','BRIDGE_DSH_CLI','BRIDGE_BACKEND','BRIDGE_PI_PROVIDER','BRIDGE_PI_MODEL','PI_BRIDGE_WORKER_PROFILE','PI_BRIDGE_PI_ARGS','PI_BRIDGE_STATE_ROOT']) {
+ for (const key of ['BRIDGE_PI_CLI','BRIDGE_DSH_CLI','BRIDGE_BACKEND','BRIDGE_PI_PROVIDER','BRIDGE_PI_MODEL','PI_BRIDGE_WORKER_PROFILE','PI_BRIDGE_PI_ARGS','PI_BRIDGE_STATE_ROOT','PI_CODING_AGENT_DIR']) {
   if (env[key]) selected[key] = env[key];
  }
- for (const key of ['BRIDGE_PI_CLI','BRIDGE_DSH_CLI','PI_BRIDGE_STATE_ROOT']) if (selected[key]) selected[key] = resolve(selected[key]);
+ for (const key of ['BRIDGE_PI_CLI','BRIDGE_DSH_CLI','PI_BRIDGE_STATE_ROOT','PI_CODING_AGENT_DIR']) if (selected[key]) selected[key] = resolve(selected[key]);
  const backend = selected.BRIDGE_BACKEND || 'pi';
  const cliKey = backend === 'dsh' ? 'BRIDGE_DSH_CLI' : 'BRIDGE_PI_CLI';
  if (!selected[cliKey]) {

@@ -147,6 +147,6 @@ export async function terminateTree(child: ChildProcess, killWaitMs = 10_000): P
   // that the group is gone and our pipes are closed.
   if (!pid) return false;
   await killTree(child, killWaitMs);
-  const closed = alreadyExited ? true : await waitClosed(child, killWaitMs);
+  const closed = await waitClosed(child, killWaitMs);
   return closed && !groupAlive(pid);
 }

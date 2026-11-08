@@ -78,3 +78,12 @@ Use `--destination PATH`, `--pi-cli PATH` or explicit `--profile minimal` when
 needed. Identical skills can be reused; changed skills are preserved and setup
 stops for review. Registration of the emitted MCP configuration and an actual
 model task remain separate from this no-model setup check.
+
+
+## Setup results and optional model verification
+
+`setup` requires a runtime release containing this command; check the installed CLI help first (v0.4.2 does not include it). If unavailable, report the version mismatch and use the documented individual commands; do not claim setup succeeded.
+
+`setup --apply` reports staged checks, expected state/skill paths and a complete MCP snippet. `installed` means dependency/startup checks and skill installation passed, not model execution. With explicit user authorization for a small model request, add `--verify` using the same options. It creates a separate temporary Git workspace and instance, delegates one file-creation task and requires passed/verified handoff plus independent verifier exit code 0 and matching file contents. It stops its own instance; successful evidence is removed, failed evidence is retained with its path/task ID. Inspect failed evidence before a new verification, which can incur another model charge.
+
+`verified` and `modelVerified:true` establish only the CLI task/acceptance path. Register the emitted MCP snippet and check the actual host connection separately. `blocked` or `verification-failed` includes a next action. Do not repeat a denied command or turn an error into a success claim. Host rejection before launch cannot be caught by the program; report the host's actual reason and wait for its authorized resolution. Setup never grants persistent permissions or edits authentication/client settings. Reuse existing model/backend choices for ordinary tasks; ask again only for a changed or missing choice.
