@@ -1,7 +1,7 @@
 {
   "name": "@uwpk/pi-bridge",
   "version": "0.4.3",
-  "description": "Portable Codex bridge for Pi and DeepSeek Harness with skill CLI and stdio MCP",
+  "description": "Portable Codex bridge for Pi with skill CLI and stdio MCP",
   "type": "module",
   "license": "MIT",
   "engines": {

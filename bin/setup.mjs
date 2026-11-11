@@ -46,7 +46,7 @@ export async function setup(argv, env=process.env) {
   return true;
  },'Use Node.js >=22.19 on Windows, macOS or Linux (Node 24 LTS recommended).');
  if(!runtime)return report;
- if(env.BRIDGE_BACKEND && env.BRIDGE_BACKEND!=='pi') {report.nextAction='Setup currently supports Pi. Follow the DSH setup reference for DSH.';return report;}
+ if(env.BRIDGE_BACKEND && env.BRIDGE_BACKEND!=='pi') {report.nextAction='Only Pi is supported.';return report;}
  const git=stage('git',()=>{const r=spawnSync('git',['--version'],{env,encoding:'utf8',timeout:10000,windowsHide:true,shell:false});if(r.status!==0)throw Error();return true;},'Install Git or allow the Git executable, then rerun the same setup command.');
  if(!git)return report;
  const cliPath=stage('pi-discovery',()=>resolvePiCli(options['pi-cli'] || env.BRIDGE_PI_CLI),'Install Pi or supply --pi-cli with its actual executable/JS entrypoint, then rerun setup.');

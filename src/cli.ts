@@ -215,7 +215,7 @@ async function cmdDoctor(args: ParsedArgs, json: boolean): Promise<number> {
   const version = {
     node: process.version,
     backend: cfg.backend || "pi",
-    healthScope: cfg.backend === "dsh" ? "adapter RPC only; headless model requires a real task" : "Pi RPC worker",
+    healthScope: "Pi RPC worker",
     piCliPath: cfg.pi.cliPath,
     piCliExists: existsSync(cfg.pi.cliPath),
     defaultModel: configuredModel(cfg),
@@ -264,10 +264,6 @@ async function cmdDoctor(args: ParsedArgs, json: boolean): Promise<number> {
 }
 
 async function cmdModels(args: ParsedArgs, json: boolean): Promise<number> {
-  if (loadConfig().backend === "dsh") {
-    out(json, { models: [], supported: false, reason: "DSH headless uses its configured model; enumeration is unavailable" }, "DSH headless model enumeration is unavailable.");
-    return ExitCode.OK;
-  }
   const ep = requireEndpoint();
   const resp = await ipcCall(ep, { command: "models" }, 60_000);
   return finish(resp, json, (d) => {

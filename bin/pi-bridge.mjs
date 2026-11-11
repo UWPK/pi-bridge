@@ -8,7 +8,7 @@ import { packageRoot, identity } from './common.mjs';
 const help = `pi-bridge: portable Codex -> Pi bridge
 Commands: setup, check-local, install-skill, mcp-config, up, doctor, models, authorize,
           delegate, status, logs, cancel, resume, down, config
-Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi|dsh are optional.
+Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi are optional.
 Mutating commands require --apply. Delegate trusted host tasks with a schema-2.0
 JSON task file (or --task-file - on stdin). Model/provider inherit Pi by default.
 setup --apply [--verify] [--destination DIR] [--pi-cli PATH] [--profile inherit|minimal]
@@ -43,11 +43,11 @@ try {
     process.exit(0);
   }
   if (action === 'check-local') {
-    const { resolvePiCli, resolveDshCli } = await import('../dist/src/config.js');
+    const { resolvePiCli } = await import('../dist/src/config.js');
     let pi; let error;
     const backend = identity(original).backend;
-    try { pi = backend === "dsh" ? resolveDshCli() : resolvePiCli(); } catch (err) { error = err.message; }
-    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, backend, architecture: process.arch, executable: pi, ...(backend === "pi" ? {pi} : {dsh:pi}), error, model: backend === 'dsh' ? 'DSH configured model' : process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
+    try { pi = resolvePiCli(); } catch (err) { error = err.message; }
+    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, backend, architecture: process.arch, executable: pi, pi, error, model: process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
     process.exit(pi ? 0 : 4);
   }
   const context = identity(original);

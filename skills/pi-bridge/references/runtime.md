@@ -1,6 +1,6 @@
 # Runtime and task contract
 
-Install the versioned package from [GitHub Releases](https://github.com/UWPK/pi-bridge/releases). Node >=22.19, npm, Git, Codex and a configured Pi or DSH must be available. Run `pi --help` / `codex --help` in the host environment first. Installing the bridge does not change Pi credentials or model configuration.
+Install the versioned package from [GitHub Releases](https://github.com/UWPK/pi-bridge/releases). Node >=22.19, npm, Git, Codex and a configured Pi must be available. Run `pi --help` / `codex --help` in the host environment first. Installing the bridge does not change Pi credentials or model configuration.
 
 The package provides `pi-bridge`, `pi-bridge-mcp`, and `pi-bridge install-skill --apply`. Existing skill directories are never overwritten; use `--destination` for another skill environment. The bridge runtime must remain installed after copying the skill.
 
@@ -53,7 +53,6 @@ On Windows use an absolute path such as `C:/work/example`; macOS/Linux use a rea
 
 Provider/model are optional. Omitting model passes no provider/model override to Pi; metadata labels the selection `default`. Set `model` to an explicitly chosen provider/model ID when reproducible model attribution is required. API keys remain in Pi's own configuration or process environment.
 
-For DSH selection and capability differences read [dsh.md](dsh.md).
 
 For optional minimal Pi workers, explicit policy extensions, MCP environment export and a configurable 300-second upgrade smoke check, read [worker-profiles.md](worker-profiles.md).
 

@@ -4,16 +4,16 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { identity, runCli } from './common.mjs';
 import { join, dirname, isAbsolute } from 'node:path';
-import { resolvePiCli, resolveDshCli } from '../dist/src/config.js';
+import { resolvePiCli } from '../dist/src/config.js';
 import { parseTaskRequest } from '../dist/src/schema.js';
 import { redactText } from '../dist/src/redact.js';
 const context = identity(process.argv.slice(2), true);
 const text = description => ({ type: 'string', description, minLength: 1 });
 const definitions = [
- ['check', 'Check local Node and selected Pi/DSH executable without calling a model.', {}, []],
+ ['check', 'Check local Node and Pi executable without calling a model.', {}, []],
  ['up', 'Start this instance daemon. Does not submit a model task.', {}, []],
- ['doctor', 'Check daemon and initialize its backend control adapter if needed; DSH health covers the adapter only.', {}, []],
- ['models', 'List Pi models; DSH headless reports model enumeration unavailable.', {}, []],
+ ['doctor', 'Check daemon and initialize the Pi RPC worker if needed.', {}, []],
+ ['models', 'List available Pi models.', {}, []],
  ['authorize', 'Authorize an absolute trusted host workspace for this instance after user authorization.', { directory: text('Absolute workspace path') }, ['directory']],
  ['delegate', 'Submit a user-authorized schema-2.0 task asynchronously. Poll status for verification and completion. Host execution uses Pi permissions.', { task: { type: 'object', description: 'schemaVersion 2.0 TaskRequest; include workspace, objective, title, mode, policy and acceptance argv.' } }, ['task']],
  ['status', 'Read task status and independent acceptance evidence. Omit taskId to list tasks.', { taskId: text('Existing task ID') }, []],
@@ -25,7 +25,7 @@ const definitions = [
 const mutations = new Set(['up', 'authorize', 'delegate', 'cancel', 'resume', 'down']);
 const tools = definitions.map(([action, description, properties, required]) => ({
  name: `pi_bridge_${action}`, description,
- inputSchema: { type: 'object', properties: { backend: { type: "string", enum: ["pi", "dsh"], description: "Execution backend; defaults to pi. Reuse the same backend for a task." }, instance: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$", description: "Unique Codex chat identity, e.g. chat-<thread-id>. Reuse for all tools in that chat." }, ...properties, ...(mutations.has(action) ? { apply: { type: 'boolean', const: true, description: 'Confirm the user-authorized state change' } } : {}) }, required: ["instance", ...required, ...(mutations.has(action) ? ['apply'] : [])], additionalProperties: false },
+ inputSchema: { type: 'object', properties: { backend: { type: "string", enum: ["pi"], description: "Execution backend; defaults to pi. Reuse the same backend for a task." }, instance: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$", description: "Unique Codex chat identity, e.g. chat-<thread-id>. Reuse for all tools in that chat." }, ...properties, ...(mutations.has(action) ? { apply: { type: 'boolean', const: true, description: 'Confirm the user-authorized state change' } } : {}) }, required: ["instance", ...required, ...(mutations.has(action) ? ['apply'] : [])], additionalProperties: false },
  annotations: { readOnlyHint: ['check', 'status', 'logs'].includes(action), destructiveHint: ['cancel', 'down'].includes(action), openWorldHint: ['delegate', 'resume', 'doctor', 'models'].includes(action) },
 }));
 const server = new Server({ name: 'pi-bridge', version: '0.4.3' }, { capabilities: { tools: {} } });
@@ -47,7 +47,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
   if (action === 'authorize' && !isAbsolute(args.directory)) throw new Error('directory must be absolute');
   let result;
   if (action === 'check') {
-    result = { code: 0, data: { backend: callContext.backend, executable: callContext.backend === "dsh" ? resolveDshCli() : resolvePiCli(), node: process.version, platform: process.platform, instance: callContext.instance, home: callContext.home, modelRequestMade: false } };
+    result = { code: 0, data: { backend: callContext.backend, executable: resolvePiCli(), node: process.version, platform: process.platform, instance: callContext.instance, home: callContext.home, modelRequestMade: false } };
   } else {
     const command = [action, '--json'];
     let input;
