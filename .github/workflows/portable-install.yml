@@ -1,4 +1,4 @@
-name: First-run package acceptance
+name: Cross-platform package acceptance
 on: [push, pull_request, workflow_dispatch]
 jobs:
   package:
@@ -14,10 +14,13 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npm test
-      - name: Test installed release artifact
+      - name: Pack and install into a fresh prefix
         shell: bash
         run: |
           npm pack --pack-destination "$RUNNER_TEMP"
           npm install --prefix "$RUNNER_TEMP/bridge-fresh" "$RUNNER_TEMP/uwpk-pi-bridge-"*.tgz
+      - name: Exercise installed package CLI, setup, MCP and independent verifier
+        shell: bash
+        run: |
           export PI_BRIDGE_PACKAGE_ROOT="$RUNNER_TEMP/bridge-fresh/node_modules/@uwpk/pi-bridge"
           npm run test:portable

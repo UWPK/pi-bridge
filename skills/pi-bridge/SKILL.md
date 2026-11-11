@@ -9,7 +9,7 @@ Use when the user explicitly requests delegation to Pi or DSH. Codex plans, sets
 
 ## First installation and model choice
 
-For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
+For installation, reinstallation or a model change, read [setup.md](references/setup.md). Establish the selected backend and provider/model before a model request: ask for missing choices and reuse explicit choices already made in the chat. Keep credentials local and record Bridge-specific selections without changing daily Pi/PiDeck defaults. Use `pi-bridge setup --apply` after npm installation to check Pi/Git, install the skill and emit MCP configuration; it makes no model request and preserves changed skills. After installing, verify the actual installed runtime with a fresh bounded task and independent acceptance.
 
 Before Pi's startup check, Pi may need to create and remove a short-lived trust lock in its own agent state directory (normally `~/.pi/agent`). If host approval is required, explain the exact operation and path to the user and wait for the user to approve it through the host's own prompt. Never ask Pi to draft, submit or retry an approval request. If automatic review rejects the request, stop and report the rejection; do not seek an equivalent permission through another route or widen access to the home directory. Follow [runtime.md](references/runtime.md) for one-command setup.
 
@@ -34,11 +34,11 @@ State is separated by backend and instance. Do not reuse another chat's instance
 
 ## Delegate and review
 
-1. Establish the actual workspace, user-authorized changes, provider/model, timeout, stop conditions and acceptance argv. Check which tools Pi can actually use and pass relevant shell/file restrictions in task constraints.
-2. Start the instance (`pi_bridge_up` with apply:true, or CLI `up --apply`). Authorize only the intended workspace using `pi_bridge_authorize` or CLI `authorize --dir <absolute-workspace> --apply`.
-3. Submit a schema-2.0 task using `pi_bridge_delegate` with apply:true or CLI `delegate --task-file <file> --apply --wait --json`. MCP submits asynchronously; keep polling `pi_bridge_status` to a terminal state. Inspect failures before resubmitting.
-4. Inspect the actual diff, independent verifier exit codes, task status and residual issues. Worker text alone cannot establish acceptance. Missing verifier evidence produces at most a partial handoff.
-5. Cancel/resume only the current instance's known task, with apply:true / --apply. Preserve idle daemon and worker for reuse. Stop with `down` only when requested or recovery requires it.
+- Establish the actual workspace, user-authorized changes, provider/model, timeout, stop conditions and acceptance argv. Check which tools Pi can actually use and pass relevant shell/file restrictions in task constraints.
+- Start the instance (`pi_bridge_up` with apply:true, or CLI `up --apply`). Authorize only the intended workspace using `pi_bridge_authorize` or CLI `authorize --dir <absolute-workspace> --apply`.
+- Submit a schema-2.0 task using `pi_bridge_delegate` with apply:true or CLI `delegate --task-file <file> --apply --wait --json`. MCP submits asynchronously; keep polling `pi_bridge_status` to a terminal state. Inspect failures before resubmitting.
+- Inspect the actual diff, independent verifier exit codes, task status and residual issues. Worker text alone cannot establish acceptance. Missing verifier evidence produces at most a partial handoff.
+- Cancel/resume only the current instance's known task, with apply:true / --apply. Preserve idle daemon and worker for reuse. Stop with `down` only when requested or recovery requires it.
 
 The runtime uses trusted host execution with Pi's existing OS permissions. It rejects requested read-only, offline and subdirectory confinement that it cannot enforce. Whole-workspace host execution requires explicit allowWrite:true and allowNetwork:true; choose a genuinely isolated runtime when tighter boundaries are needed. Authorization does not make filesystem or network isolation available.
 

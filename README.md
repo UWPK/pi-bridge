@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.2/uwpk-pi-bridge-0.4.2.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.3/uwpk-pi-bridge-0.4.3.tgz
 pi-bridge check-local
 ```
 
@@ -31,9 +31,9 @@ npm run build
 node bin/pi-bridge.mjs check-local
 ```
 
-## 首次安装检查与验证（源码开发版）
+## 首次安装与验收
 
-以下 `setup` 流程在本次开发分支中新增；上面的 v0.4.2 安装包不包含它。发布包含此功能的新版本后，才可直接使用全局命令。
+已发布的 v0.4.3 支持 `pi-bridge setup --apply`。本分支进一步提供分阶段诊断与 `--verify` 模型验收，需使用源码构建；这些增强尚未包含在 v0.4.3 发布包中。
 
 ```text
 node bin/pi-bridge.mjs setup --apply
@@ -101,7 +101,7 @@ codex mcp add pi_bridge -- pi-bridge-mcp
 
 ## 选择 Pi 或 DSH
 
-v0.4.0 新增实验性 DSH headless 支持；模型服务链路需在用户环境另行验收。
+提供实验性 DSH headless 支持；模型服务链路需在用户环境另行验收。
 
 Pi 保持默认，可沿用已有命令。DSH 通过官方 `dsh --profile headless <task>` 接口运行：
 
@@ -146,7 +146,7 @@ Windows 默认状态位于 LOCALAPPDATA/pi-bridge，macOS 为 ~/Library/Applicat
 
 ## 插件较多时的精简工作进程
 
-v0.4.1 将 macOS 实操中的规避方法纳入通用配置：默认 `inherit` 完整继承 Pi；设置 `PI_BRIDGE_WORKER_PROFILE=minimal` 后，Bridge 工作进程关闭自动扩展、MCP、技能和提示模板加载。模型、认证和日常 PiDeck 配置保持原样。
+工作进程可独立配置：默认 `inherit` 完整继承 Pi；设置 `PI_BRIDGE_WORKER_PROFILE=minimal` 后，Bridge 工作进程关闭自动扩展、MCP、技能和提示模板加载。模型、认证和日常 PiDeck 配置保持原样。
 
 通过 `PI_BRIDGE_PI_ARGS` 的 JSON 数组显式加回必要项，例如 `--extension` 加机器规则插件的绝对路径。也可在当前实例 `bridge.config.json` 的 `pi.profile` / `pi.args` 中配置。首次启动会检查所选 Pi 是否支持所需参数；缺少必要文件或不支持的参数会明确报错。不会硬编码某台 Mac 的路径，也不需要额外 Python 包装器。
 
@@ -173,3 +173,32 @@ npm run test:smoke
 ## 来源
 
 由已有的本地 codex-pi-bridge 运行时整理并改进。Pi 与 MCP SDK 使用各自许可，本包未包含模型凭据、私人运行数据或 Pi 本体。
+
+## Windows/macOS 安装验收入口
+
+npm 安装发布 tarball 后运行：
+
+```text
+pi-bridge setup --apply
+```
+
+该命令检查 Git、实际 Pi `--help` 和选定 worker 参数，安装技能并返回完整 MCP
+配置。相同技能可重复执行；已有不同内容不会覆盖。可用 `--destination PATH` 安装
+到共享技能库，`--pi-cli PATH` 指定已有 Pi 入口。插件较多时显式选用
+`--profile minimal`，并通过 `PI_BRIDGE_PI_ARGS` 保留任务需要的机器策略扩展。
+默认保持 inherit，避免静默移除用户插件。命令不修改 Pi 认证或 Codex MCP 配置，
+不请求模型；将输出的完整 MCP 配置注册后，再做真实任务验收。
+
+GitHub Actions 在 Windows x64、Mac Apple Silicon 和 Intel Mac 执行源码测试，
+再将 npm tarball 装入全新前缀，验证实际安装包的 setup、CLI、MCP 与独立验收。
+这些使用模拟 Pi，不能替代目标电脑自身的模型认证和在线任务测试。
+
+
+## 文档与许可证
+
+- [Skill 入口](skills/pi-bridge/SKILL.md)：任务委派与结果审阅。
+- [首次配置](skills/pi-bridge/references/setup.md)：模型选择、认证和安装处理。
+- [运行契约](skills/pi-bridge/references/runtime.md)：CLI、MCP、任务格式与恢复。
+- [验证范围](VALIDATION.md)：自动化测试与真实模型验收的区别。
+
+本项目采用 [MIT License](LICENSE)。Pi、DeepSeek Harness、模型服务及其商标属于各自权利人，使用时遵循对应项目和服务条款。本项目不分发模型凭据。
