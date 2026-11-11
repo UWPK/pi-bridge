@@ -1,6 +1,6 @@
 # Runtime and task contract
 
-Install the versioned package from [GitHub Releases](https://github.com/UWPK/pi-bridge/releases). Node >=22.19, npm, Git, Codex and a configured Pi or DSH must be available. Run `pi --help` / `codex --help` in the host environment first. Installing the bridge does not change Pi credentials or model configuration.
+Install the versioned package from [GitHub Releases](https://github.com/UWPK/pi-bridge/releases). Node >=22.19, npm, Git, Codex and a configured Pi must be available. Run `pi --help` / `codex --help` in the host environment first. Installing the bridge does not change Pi credentials or model configuration.
 
 The package provides `pi-bridge`, `pi-bridge-mcp`, and `pi-bridge install-skill --apply`. Existing skill directories are never overwritten; use `--destination` for another skill environment. The bridge runtime must remain installed after copying the skill.
 
@@ -53,7 +53,6 @@ On Windows use an absolute path such as `C:/work/example`; macOS/Linux use a rea
 
 Provider/model are optional. Omitting model passes no provider/model override to Pi; metadata labels the selection `default`. Set `model` to an explicitly chosen provider/model ID when reproducible model attribution is required. API keys remain in Pi's own configuration or process environment.
 
-For DSH selection and capability differences read [dsh.md](dsh.md).
 
 For optional minimal Pi workers, explicit policy extensions, MCP environment export and a configurable 300-second upgrade smoke check, read [worker-profiles.md](worker-profiles.md).
 
@@ -66,7 +65,24 @@ Use status and a small log tail after interruption. Do not replay an uncertain t
 After npm installs the release package, use `pi-bridge setup --apply` to verify
 Git and the actual Pi executable, validate worker flags, install the skill, and
 return a complete MCP snippet without editing client settings or credentials.
+Pi startup checks, including `--help`, may create a temporary trust lock under
+Pi's agent state directory (normally `~/.pi/agent`). On approval-gated hosts,
+the user must approve only that directory's normal lock-file create/remove
+operation through the host prompt. State the exact operation and path; do not
+have Pi draft or submit an approval request. If automatic review rejects it,
+stop and report the rejection instead of retrying through another route or
+widening permissions to the whole home directory. Resume setup only after the
+user approves through the host prompt.
 Use `--destination PATH`, `--pi-cli PATH` or explicit `--profile minimal` when
 needed. Identical skills can be reused; changed skills are preserved and setup
 stops for review. Registration of the emitted MCP configuration and an actual
 model task remain separate from this no-model setup check.
+
+
+## Setup results and optional model verification
+
+`setup` requires a runtime release containing this command; check the installed CLI help first. Staged reports and --verify are available in v0.4.4. If unavailable, report the version mismatch and use the documented individual commands; do not claim setup succeeded.
+
+`setup --apply` reports staged checks, expected state/skill paths and a complete MCP snippet. `installed` means dependency/startup checks and skill installation passed, not model execution. With explicit user authorization for a small model request, add `--verify` using the same options. It creates a separate temporary Git workspace and instance, delegates one file-creation task and requires passed/verified handoff plus independent verifier exit code 0 and matching file contents. It stops its own instance; successful evidence is removed, failed evidence is retained with its path/task ID. Inspect failed evidence before a new verification, which can incur another model charge.
+
+`verified` and `modelVerified:true` establish only the CLI task/acceptance path. Register the emitted MCP snippet and check the actual host connection separately. `blocked` or `verification-failed` includes a next action. Do not repeat a denied command or turn an error into a success claim. Host rejection before launch cannot be caught by the program; report the host's actual reason and wait for its authorized resolution. Setup never grants persistent permissions or edits authentication/client settings. Reuse existing model/backend choices for ordinary tasks; ask again only for a changed or missing choice.

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { mcpConfig } from './mcp-config.mjs';
-import { setup } from './setup.mjs';
 import { existsSync, cpSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -9,9 +8,12 @@ import { packageRoot, identity } from './common.mjs';
 const help = `pi-bridge: portable Codex -> Pi bridge
 Commands: setup, check-local, install-skill, mcp-config, up, doctor, models, authorize,
           delegate, status, logs, cancel, resume, down, config
-Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi|dsh are optional.
+Use --instance NAME or a Codex thread identity. --state-root PATH and --backend pi are optional.
 Mutating commands require --apply. Delegate trusted host tasks with a schema-2.0
 JSON task file (or --task-file - on stdin). Model/provider inherit Pi by default.
+setup --apply [--verify] [--destination DIR] [--pi-cli PATH] [--profile inherit|minimal]
+checks startup and installs the skill. --verify authorizes a small model task (may incur charges).
+Host permissions are unchanged. Successful verification cleans test files; failures retain evidence.
 install-skill --destination DIR defaults to ~/.agents/skills/pi-bridge.
 mcp-config prints a Codex TOML snippet; it does not edit Codex configuration.`;
 try {
@@ -19,8 +21,11 @@ try {
   const action = original[0] || 'help';
   if (['help', '--help', '-h'].includes(action)) { console.log(help); process.exit(0); }
   if (action === 'setup') {
-    console.log(JSON.stringify(setup(original.slice(1)), null, 2));
-    process.exit(0);
+    if (original.includes('--help') || original.includes('-h')) { console.log(help); process.exit(0); }
+    const { setup } = await import('./setup.mjs');
+    const result = await setup(original.slice(1));
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(result.ok ? 0 : 4);
   }
   if (action === 'mcp-config') {
     console.log(mcpConfig());
@@ -38,11 +43,11 @@ try {
     process.exit(0);
   }
   if (action === 'check-local') {
-    const { resolvePiCli, resolveDshCli } = await import('../dist/src/config.js');
+    const { resolvePiCli } = await import('../dist/src/config.js');
     let pi; let error;
     const backend = identity(original).backend;
-    try { pi = backend === "dsh" ? resolveDshCli() : resolvePiCli(); } catch (err) { error = err.message; }
-    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, backend, architecture: process.arch, executable: pi, ...(backend === "pi" ? {pi} : {dsh:pi}), error, model: backend === 'dsh' ? 'DSH configured model' : process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
+    try { pi = resolvePiCli(); } catch (err) { error = err.message; }
+    console.log(JSON.stringify({ ok: !!pi, node: process.version, platform: process.platform, backend, architecture: process.arch, executable: pi, pi, error, model: process.env.BRIDGE_PI_MODEL || 'Pi default', modelRequestMade: false }));
     process.exit(pi ? 0 : 4);
   }
   const context = identity(original);

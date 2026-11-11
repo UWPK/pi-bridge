@@ -1,20 +1,25 @@
-# Release validation
+# Validation
 
-Version: 0.4.2
+## Automated acceptance
 
-This release adds initial-install/reinstall guidance and a backend/provider/model selection step to the skill. Already confirmed choices are reused, credentials stay local, and Bridge-specific Pi model selection preserves daily Pi/PiDeck defaults. Runtime behavior is unchanged from 0.4.1 apart from version metadata.
+The first-run implementation passed full test suites and fresh-package installation on Windows, macOS Apple Silicon, macOS Intel and Linux in [GitHub Actions run 42510416965](https://github.com/UWPK/pi-bridge/actions/runs/42510416965). This run predates the current documentation cleanup and integration with the latest main branch; the PR checks validate the current revision.
 
-Version 0.4.1 validation: 62 unit tests, 46 integration tests and 6 portable interface tests passed (114 total). A real Pi 1.4.0 minimal-profile RPC handshake passed without a model request; all 6 portable tests also passed against its installed release archive. The supplied macOS repair report validates its own 0.3.0 CLI tasks. Current-release macOS/Linux full-model acceptance remains outstanding.
+Local macOS acceptance included 62 unit tests, 44 integration tests and 8 portable interface tests; two Windows-specific integration tests were skipped. Portable tests also passed against a packed archive installed into a fresh directory.
 
-Version 0.4.2 verification on Windows x64 / Node 24.15.0:
+Coverage includes CLI/MCP transport, separate instances, independent verification, repeated installation, preservation of modified skills, Pi startup failures, failed model-task acceptance and cleanup. CI uses simulated backends and no model credentials.
 
-- TypeScript build and all 6 portable interface tests passed.
-- The public GitHub release archive installed with one npm invocation into an empty Bridge-specific prefix on E (96 packages).
-- The previous active legacy runtime/skill were backed up and replaced; backend authentication and daily Pi/PiDeck defaults were retained.
-- The freshly installed MCP service exposed 11 tools, passed backend discovery and real Pi RPC health checks, and confirmed the user-selected QPT DeepSeek model.
-- One real MCP-delegated task used PowerShell to create the requested single file, reached agent_settled, and returned passed / verified with independent verifier exit code 0 in approximately 12 seconds.
-- Additional PowerShell review confirmed exact output including a single Windows newline. The test instance was stopped afterward.
-- Codex CLI read back the newly registered MCP as enabled with the intended provider/model/profile.
-- The local setup required newline correction when appending generated TOML. The first local test reader also needed to parse the nested payloadJson object structurally; the original successful task evidence was reviewed without another model request. No package runtime patch or second npm installation was required.
+## Live model acceptance
 
-The detailed installation record and local paths remain outside this repository. Live model requests remain opt-in; dependency discovery, RPC health and verified task completion are separate observations. Current-release macOS/Linux, long-task and recovery scenarios were not retested by this Windows clean-install check.
+Historical Windows v0.4.2 acceptance included a real Pi MCP task with passed/verified handoff and independent verifier exit code 0. It does not establish current-version live model compatibility on every platform.
+
+The new optional `setup --apply --verify` path has been tested with simulated Pi processes. Its real-provider acceptance remains outstanding. Dependency discovery, Pi RPC health, a real model task and host MCP connectivity are separate checks; none should be substituted for another.
+
+## Reproduce
+
+```text
+npm ci
+npm test
+npm pack
+```
+
+Test the resulting archive in a fresh installation prefix. For explicitly authorized real model acceptance, run the installed setup command with `--apply --verify` and the intended Pi entrypoint/profile. This can incur model charges. Successful test evidence is cleaned; failed evidence is retained for diagnosis. Host permissions and model credentials remain the user's responsibility.

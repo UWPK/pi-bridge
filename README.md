@@ -1,21 +1,21 @@
 # Pi Bridge
 
-将 Codex 的有边界任务交给已安装的 Pi 或 DeepSeek Harness（DSH）执行，并返回独立验收证据。提供 **Skill、命令行和 stdio MCP** 三种入口，使用同一套运行时。
+将 Codex 的有边界任务交给已安装的 Pi执行，并返回独立验收证据。提供 **Skill、命令行和 stdio MCP** 三种入口，使用同一套运行时。
 
 - Windows、macOS、Linux 使用相同的 Node 程序，无需 PowerShell。
-- 自动查找所选后端，支持 Pi/DSH 的 npm 全局安装、JS 入口和原生可执行程序。
-- Pi 默认继承自己的模型、认证、代理和插件，也可指定 provider/model。DSH 继承自己的 headless 配置。
+- 自动查找所选后端，支持 Pi 的 npm 全局安装、JS 入口和原生可执行程序。
+- Pi 默认继承自己的模型、认证、代理和插件，也可指定 provider/model。
 - 每个 Codex 聊天使用独立实例，保存任务、日志和恢复状态。
 - 常驻 daemon 复用空闲 Pi worker；取消、超时、独立验收和失败恢复保持统一。
 
 ## 安装
 
-前提：**Node.js >=22.19（推荐 24 LTS）、npm、Git、Codex，以及已配置可用模型的 Pi 或 DSH**。先确认所选后端的 `pi --help` 或 `dsh --help` 与 `codex --help` 正常。DSH 当前发布版要求 Node >=24.9.0。
+前提：**Node.js >=22.19（推荐 24 LTS）、npm、Git、Codex，以及已配置可用模型的 Pi**。先确认Pi 的 `pi --help` 与 `codex --help` 正常。
 
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.3/uwpk-pi-bridge-0.4.3.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.4/uwpk-pi-bridge-0.4.4.tgz
 pi-bridge check-local
 ```
 
@@ -31,6 +31,25 @@ npm run build
 node bin/pi-bridge.mjs check-local
 ```
 
+## 首次安装与验收
+
+v0.4.4 提供分阶段安装诊断与可选模型验收。安装后运行：
+
+```text
+pi-bridge setup --apply
+pi-bridge setup --apply --verify
+```
+
+第一步检查 Git、Pi 入口、启动与工作进程参数，安装 skill 并输出完整 MCP 配置，不调用模型。默认沿用 Pi 的模型与认证；`--pi-cli PATH`、`--profile inherit|minimal`、`--destination PATH` 可指定入口、工作进程和共享技能目录。重复运行会复用一致的 skill；发现本机修改时停止并保留文件。
+
+第二步需明确选择 `--verify`：会连接模型（可能计费），在专用临时 Git 工作区让 Pi 创建一个小文件，并由独立命令核对内容。通过后停止测试实例、删除测试文件；失败保留诊断目录与任务 ID，不自动重试，也不会影响日常实例。重新验证会创建新测试任务，先检查上一轮结果，避免重复费用。
+
+结果区分 `installed`（依赖与安装检查通过）、`verified`（CLI 模型任务和独立验收通过）、`blocked`（安装检查未通过）、`verification-failed`（模型或验收失败）。只有真实验收通过才返回 `modelVerified: true`；这仍不代表 Codex 的 MCP 连接或未来任务的权限已经验证。
+
+权限由宿主应用控制。Pi 首次启动可能写入自己的状态目录；Bridge 也需要保存运行状态。输出中的 `permissions` 列出预期路径与进程，用户可在宿主支持时选择保留所需授权。程序不会修改宿主权限配置、关闭审核或扩大整个用户目录的访问范围。如果宿主在命令运行前拦截，程序无法捕获该拒绝，应查看宿主给出的具体理由。自动审核拒绝后停止，用户通过正式权限入口解决后再手动重试。
+
+复制输出中的完整 MCP 配置，接入宿主并检查连接。以后复用已选择的入口和模型；只有工作区、模型或权限范围变化时才确认新选择。
+
 ## 接入 Skill
 
 ```text
@@ -43,7 +62,7 @@ pi-bridge install-skill --apply
 
 ## 首次配置时选择模型
 
-安装或重装时，skill 会先询问缺失的后端（Pi / DSH）及服务商、模型选择；当前聊天已给出的选择会直接沿用。复用后端现有认证，凭据在本机处理。Pi 模型选择保存到 Bridge 专用配置，日常 PiDeck 默认模型保持原样；DSH 使用自身配置。配置完成后，以实际安装包执行一次有独立验收的小任务。详见 [首次配置说明](skills/pi-bridge/references/setup.md)。
+安装或重装时，skill 会先询问缺失的服务商、模型选择；当前聊天已给出的选择会直接沿用。复用后端现有认证，凭据在本机处理。Pi 模型选择保存到 Bridge 专用配置，日常 PiDeck 默认模型保持原样。配置完成后，以实际安装包执行一次有独立验收的小任务。详见 [首次配置说明](skills/pi-bridge/references/setup.md)。
 
 ## 接入 MCP
 
@@ -80,40 +99,10 @@ codex mcp add pi_bridge -- pi-bridge-mcp
 
 如果只安装 MCP，在 Codex 项目说明中写明：委派给 Pi 时使用 `pi_bridge_*` 工具，每个聊天使用独立 instance，提交后轮询状态并验收 diff 和验证命令。
 
-## 选择 Pi 或 DSH
-
-v0.4.0 新增实验性 DSH headless 支持；模型服务链路需在用户环境另行验收。
-
-Pi 保持默认，可沿用已有命令。DSH 通过官方 `dsh --profile headless <task>` 接口运行：
-
-```text
-pi-bridge check-local --backend dsh
-pi-bridge up --backend dsh --instance my-chat --apply --json
-pi-bridge authorize --backend dsh --instance my-chat --dir <absolute-workspace> --apply --json
-pi-bridge delegate --backend dsh --instance my-chat --task-file task.json --apply --wait --json
-pi-bridge status --backend dsh --instance my-chat --all --json
-```
-
-MCP 调用加入 `backend:"dsh"`，同一任务始终使用相同 backend 和 instance。DSH 实例在状态根目录下另存于 dsh/<instance>，与同名 Pi 实例隔离。只使用 DSH 时无需安装 Pi。
-
-| 能力 | Pi 后端 | DSH headless 后端 |
-| --- | --- | --- |
-| 启动接口 | Pi RPC | DSH 官方 headless CLI |
-| 会话 | 常驻 RPC worker；可按会话恢复 | 每个任务创建新会话；resume 重新执行任务 |
-| 任务状态、验收、超时、取消 | 支持 | 支持 |
-| 细粒度轮次、工具与用量 | 依据 Pi 提供的事件 | 当前适配层不提供 |
-| maxWorkerTurns | 按 RPC turn_start 事件限制 | 无法约束 DSH 内部轮次；使用主机任务超时 |
-| 指定模型 | 可选 provider/model | 使用 DSH 自身配置，拒绝 task.model 覆盖 |
-| doctor | 检查 Pi RPC | 检查适配层 RPC；实际 DSH/模型需真实任务验证 |
-
-DSH 的 SDK/ACP 提供更丰富的标准输入输出接入能力。本版本选择 headless 实现第一阶段兼容，保持明确的功能边界。DSH 输出的推理 stderr 会被排空，适配层仅回传最终 stdout 摘要和退出状态。完整说明见 [DSH 后端](skills/pi-bridge/references/dsh.md)。
-
 ## 配置
 
 | 设置 | 作用 |
 | --- | --- |
-| `BRIDGE_BACKEND` / `--backend` | 选择 pi 或 dsh，默认 pi |
-| `BRIDGE_DSH_CLI` | DSH 的 JS 入口或原生程序绝对路径 |
 | `BRIDGE_PI_CLI` | Pi 的 JS 入口或原生可执行文件绝对路径 |
 | `BRIDGE_PI_PROVIDER` / `BRIDGE_PI_MODEL` | 可选模型覆盖；留空使用 Pi 默认模型 |
 | `PI_BRIDGE_STATE_ROOT` / `--state-root` | Bridge 状态根目录 |
@@ -127,7 +116,7 @@ Windows 默认状态位于 LOCALAPPDATA/pi-bridge，macOS 为 ~/Library/Applicat
 
 ## 插件较多时的精简工作进程
 
-v0.4.1 将 macOS 实操中的规避方法纳入通用配置：默认 `inherit` 完整继承 Pi；设置 `PI_BRIDGE_WORKER_PROFILE=minimal` 后，Bridge 工作进程关闭自动扩展、MCP、技能和提示模板加载。模型、认证和日常 PiDeck 配置保持原样。
+工作进程可独立配置：默认 `inherit` 完整继承 Pi；设置 `PI_BRIDGE_WORKER_PROFILE=minimal` 后，Bridge 工作进程关闭自动扩展、MCP、技能和提示模板加载。模型、认证和日常 PiDeck 配置保持原样。
 
 通过 `PI_BRIDGE_PI_ARGS` 的 JSON 数组显式加回必要项，例如 `--extension` 加机器规则插件的绝对路径。也可在当前实例 `bridge.config.json` 的 `pi.profile` / `pi.args` 中配置。首次启动会检查所选 Pi 是否支持所需参数；缺少必要文件或不支持的参数会明确报错。不会硬编码某台 Mac 的路径，也不需要额外 Python 包装器。
 
@@ -150,7 +139,6 @@ npm run test:smoke
 
 默认测试使用模拟 Pi，不请求模型。smoke 默认明确跳过真实服务；需要显式设置 BRIDGE_LIVE_TEST=1 才会尝试真实模型请求。
 
-验证结果见 [VALIDATION.md](VALIDATION.md)。离线测试使用模拟后端；Windows 已有 DSH + QPT 模型的完整 CLI 委派与独立验收记录。用户提供的 macOS 0.3.0 修复报告记录了精简配置下的真实 Pi CLI 任务成功；当前版本的 macOS/Linux 实机验收仍需在对应电脑完成。MCP 模拟后端回归和真实模型验收分别记录。
 ## 来源
 
 由已有的本地 codex-pi-bridge 运行时整理并改进。Pi 与 MCP SDK 使用各自许可，本包未包含模型凭据、私人运行数据或 Pi 本体。
@@ -173,3 +161,13 @@ pi-bridge setup --apply
 GitHub Actions 在 Windows x64、Mac Apple Silicon 和 Intel Mac 执行源码测试，
 再将 npm tarball 装入全新前缀，验证实际安装包的 setup、CLI、MCP 与独立验收。
 这些使用模拟 Pi，不能替代目标电脑自身的模型认证和在线任务测试。
+
+
+## 文档与许可证
+
+- [Skill 入口](skills/pi-bridge/SKILL.md)：任务委派与结果审阅。
+- [首次配置](skills/pi-bridge/references/setup.md)：模型选择、认证和安装处理。
+- [运行契约](skills/pi-bridge/references/runtime.md)：CLI、MCP、任务格式与恢复。
+- [验证范围](VALIDATION.md)：自动化测试与真实模型验收的区别。
+
+本项目采用 [MIT License](LICENSE)。Pi、模型服务及其商标属于各自权利人，使用时遵循对应项目和服务条款。本项目不分发模型凭据。

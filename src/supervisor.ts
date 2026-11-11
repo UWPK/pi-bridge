@@ -165,15 +165,14 @@ export class PiSupervisor {
       if (this.slot === old) this.slot = null;
     }
 
-    const loaderArgs = this.cfg.backend === "dsh" ? [] : piWorkerArgs(this.cfg.pi);
-    if (!this.profileValidated && this.cfg.backend !== "dsh") {
+    const loaderArgs = piWorkerArgs(this.cfg.pi);
+    if (!this.profileValidated) {
       validatePiWorkerSupport(this.cfg.pi, loaderArgs);
       this.profileValidated = true;
     }
     const [provider, modelId] = splitModel(model);
     const proc = new PiRpcProcess({
       cliPath: this.cfg.pi.cliPath,
-      env: this.cfg.backend === "dsh" ? { BRIDGE_DSH_CLI: this.cfg.dsh!.cliPath } : {},
       nodePath: this.cfg.pi.nodePath,
       cwd: workspace,
       provider,
@@ -266,8 +265,8 @@ export class PiSupervisor {
       stuck: this.stuckReason,
       actualModel: this.slot?.actualModel ?? null,
       thinkingLevel: this.slot?.thinkingLevel ?? null,
-      profile: this.cfg.backend === "dsh" ? "dsh-headless" : this.cfg.pi.profile ?? "inherit",
-      loaderArgs: this.cfg.backend === "dsh" ? [] : piWorkerArgs(this.cfg.pi),
+      profile: this.cfg.pi.profile ?? "inherit",
+      loaderArgs: piWorkerArgs(this.cfg.pi),
     };
   }
 

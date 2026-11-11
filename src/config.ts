@@ -19,9 +19,7 @@ import { BridgeError, ExitCode } from "./errors.js";
 export function resolvePiCli(explicit?: string): string {
   return resolveAgentCli("pi", ["@earendil-works/pi-coding-agent", "@mariozechner/pi-coding-agent"], explicit || process.env.BRIDGE_PI_CLI);
 }
-export function resolveDshCli(explicit?: string): string {
-  return resolveAgentCli("dsh", ["@deepseek-ai/dsh"], explicit || process.env.BRIDGE_DSH_CLI);
-}
+
 function resolveAgentCli(name: string, packages: string[], supplied?: string): string {
 
   if (supplied) {
@@ -65,7 +63,7 @@ function resolveAgentCli(name: string, packages: string[], supplied?: string): s
 }
 
 export function configuredModel(cfg: BridgeConfig): string {
-  if (cfg.backend === "dsh" || !cfg.pi.model) return "default";
+  if (!cfg.pi.model) return "default";
   return cfg.pi.model.includes("/") || !cfg.pi.provider ? cfg.pi.model : `${cfg.pi.provider}/${cfg.pi.model}`;
 }
 export function defaultHome(): string {
@@ -78,8 +76,7 @@ export function defaultConfig(overrides: Partial<BridgeConfig> = {}): BridgeConf
   const home = overrides.home ?? defaultHome();
   const base: BridgeConfig = {
     home,
-    backend: (process.env.BRIDGE_BACKEND || "pi") as "pi" | "dsh",
-    dsh: { cliPath: "" },
+    backend: "pi",
     ipc: { host: "127.0.0.1" },
     pi: {
       cliPath: "",
@@ -124,14 +121,9 @@ export function loadConfig(overrides: Partial<BridgeConfig> = {}): BridgeConfig 
     }
   }
   const merged = defaultConfig(deepMerge(fileCfg as Record<string, unknown>, overrides as Record<string, unknown>) as Partial<BridgeConfig>);
-  if (!["pi", "dsh"].includes(merged.backend || "pi")) throw new BridgeError(ExitCode.BAD_REQUEST, "backend must be pi or dsh");
-  if (merged.backend === "dsh") {
-    merged.dsh = { cliPath: resolveDshCli(merged.dsh?.cliPath) };
-    merged.pi.cliPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../bin/dsh-rpc-adapter.mjs");
-  } else if (!merged.pi.cliPath) {
-    merged.pi.cliPath = resolvePiCli();
-  }
-  if (merged.backend === "pi") piWorkerArgs(merged.pi);
+  if (merged.backend !== undefined && merged.backend !== "pi") throw new BridgeError(ExitCode.BAD_REQUEST, "Only Pi is supported");
+  if (!merged.pi.cliPath) merged.pi.cliPath = resolvePiCli();
+  piWorkerArgs(merged.pi);
   return merged;
 }
 

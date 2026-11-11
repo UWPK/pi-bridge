@@ -120,8 +120,9 @@ function groupAlive(pid: number): boolean {
   try {
     process.kill(-pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // Permission errors do not prove that a process group is gone.
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
   }
 }
 
@@ -147,6 +148,12 @@ export async function terminateTree(child: ChildProcess, killWaitMs = 10_000): P
   // that the group is gone and our pipes are closed.
   if (!pid) return false;
   await killTree(child, killWaitMs);
+  const deadline = Date.now() + killWaitMs;
   const closed = await waitClosed(child, killWaitMs);
+  // Closing pipes can precede the OS reaping killed descendants. Wait within
+  // the confirmation budget instead of treating that brief race as a failure.
+  while (closed && groupAlive(pid) && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
   return closed && !groupAlive(pid);
 }

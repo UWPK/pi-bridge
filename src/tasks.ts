@@ -113,7 +113,6 @@ export class TaskEngine {
     this.assertAccepting();
 
     const model = req.model ?? configuredModel(this.cfg);
-    if (this.cfg.backend === "dsh" && model !== "default") throw new BridgeError(ExitCode.BAD_REQUEST, "DSH headless uses its own configured model; omit task.model");
     const taskId = req.taskId ?? newId("task");
     const now = new Date().toISOString();
 
@@ -388,7 +387,6 @@ export class TaskEngine {
       ? diff.changedFiles.filter((f) => !inScope(f.path, scopePrefixes))
       : [];
     const risks = [...riskNotes];
-    if (this.cfg.backend === "dsh") risks.push("DSH headless: fresh session per task/resume; internal turn/tool counts and usage unavailable; maxWorkerTurns is not enforced inside DSH. Host timeout and independent acceptance remain enforced.");
     let stopReason = outcome.stopReason;
     if (outOfScope.length) {
       risks.push(`改动超出 scope: ${outOfScope.map((f) => f.path).join(", ")}`);
@@ -588,7 +586,6 @@ export class TaskEngine {
     const scopePrefixes = validateScope(workspace, req.scope);
     assertEnforceableRun(req.policy, scopePrefixes);
     const model = req.model ?? configuredModel(this.cfg);
-    if (this.cfg.backend === "dsh" && model !== "default") throw new BridgeError(ExitCode.BAD_REQUEST, "DSH headless uses its own configured model; omit task.model");
     const waitPromise = this.enqueue(taskId, req, workspace, model, scopePrefixes, task.generation, RESUME_ELIGIBLE);
     return { taskId, wait: waitPromise };
   }

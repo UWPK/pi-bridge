@@ -1,11 +1,11 @@
-name: Windows and macOS package acceptance
+name: Cross-platform package acceptance
 on: [push, pull_request, workflow_dispatch]
 jobs:
   package:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-15, macos-15-intel]
+        os: [windows-latest, macos-15, macos-15-intel, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

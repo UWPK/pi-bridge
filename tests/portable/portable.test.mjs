@@ -1,6 +1,6 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -96,25 +96,45 @@ test('MCP handshake, validation, isolated daemon, fake Pi task and real verifier
 
 test('MCP config preserves worker selection without exporting unrelated secrets', () => {
  const args=JSON.stringify(['--extension',pi]);
- const result=cli(['mcp-config'],{PI_BRIDGE_WORKER_PROFILE:'minimal',PI_BRIDGE_PI_ARGS:args,UNRELATED_API_KEY:'do-not-export-this'});
+ const result=cli(['mcp-config'],{PI_BRIDGE_WORKER_PROFILE:'minimal',PI_BRIDGE_PI_ARGS:args,PI_CODING_AGENT_DIR:join(temp,'custom-agent'),UNRELATED_API_KEY:'do-not-export-this'});
  assert.equal(result.status,0,result.stderr);
  assert.match(result.stdout,/\[mcp_servers\.pi_bridge\.env\]/);
  assert.match(result.stdout,/PI_BRIDGE_WORKER_PROFILE = "minimal"/);
  assert.match(result.stdout,/BRIDGE_PI_CLI = /);
  assert.match(result.stdout,/PI_BRIDGE_PI_ARGS = /);
+ assert.match(result.stdout,/PI_CODING_AGENT_DIR = /);
  assert.ok(!result.stdout.includes('do-not-export-this'));
 });
 
-test('setup checks Pi and installs idempotently without overwriting a changed skill', () => {
- const destination=join(temp,'setup with spaces','pi-bridge');
- const argv=['setup','--destination',destination,'--profile','minimal','--apply'];
- const first=cli(argv); assert.equal(first.status,0,first.stderr);
- const result=JSON.parse(first.stdout);assert.equal(result.ok,true);assert.equal(result.modelRequestMade,false);
- assert.match(result.mcpConfig,/PI_BRIDGE_WORKER_PROFILE = "minimal"/);
- const again=cli(argv);assert.equal(again.status,0,again.stderr);assert.equal(JSON.parse(again.stdout).reused,true);
- writeFileSync(join(destination,'SKILL.md'),'user edits');
- assert.equal(cli(argv).status,2);
- assert.equal(readFileSync(join(destination,'SKILL.md'),'utf8'),'user edits');
- assert.equal(cli(['setup','--apply','--pi-cli',join(temp,'missing.cjs')]).status,2);
- assert.equal(cli(argv,{BRIDGE_BACKEND:'dsh'}).status,2);
+test('first-run setup distinguishes installation, startup failure and live verification', {timeout:90000}, () => {
+ const destination=join(temp,'first-run-skill');
+ assert.equal(cli(['setup']).status,2);
+ const install=cli(['setup','--apply','--destination',destination]);
+ assert.equal(install.status,0,install.stderr);
+ const report=JSON.parse(install.stdout);
+ assert.equal(report.status,'installed');assert.equal(report.modelVerified,false);assert.equal(report.modelRequestMade,false);
+ assert.ok(report.permissions.piState);assert.match(report.mcpConfig,/mcp_servers.pi_bridge/);
+ assert.equal(JSON.parse(cli(['setup','--apply','--destination',destination]).stdout).reused,true);
+ const broken=join(temp,'startup-denied.cjs');writeFileSync(broken,"process.stderr.write('SECRET-MUST-NOT-LEAK');process.exit(1)");
+ const denied=cli(['setup','--apply','--destination',destination,'--pi-cli',broken]);
+ assert.equal(denied.status,4);assert.ok(!denied.stdout.includes('SECRET-MUST-NOT-LEAK'));
+ const blocked=JSON.parse(denied.stdout);assert.equal(blocked.status,'blocked');assert.equal(blocked.checks.at(-1).id,'pi-startup');assert.match(blocked.nextAction,/Stop after an automatic rejection/);
+ const live=cli(['setup','--apply','--verify','--destination',destination]);
+ assert.equal(live.status,0,live.stdout+live.stderr);
+ const verified=JSON.parse(live.stdout);assert.equal(verified.status,'verified');assert.equal(verified.modelVerified,true);assert.equal(verified.verification.cleanup,'stopped');assert.equal(verified.verification.evidenceDirectory,undefined);
+ writeFileSync(join(destination,'SKILL.md'),'user changes');
+ const changed=cli(['setup','--apply','--destination',destination]);assert.equal(changed.status,4);assert.equal(readFileSync(join(destination,'SKILL.md'),'utf8'),'user changes');
 });
+
+
+test('setup preserves failed model evidence and never claims a verified result', {timeout:60000}, () => {
+ const wrong=join(temp,'wrong-output.cjs');writeFileSync(wrong,send.replace("'hello\\n'","'wrong\\n'"));
+ const r=cli(['setup','--apply','--verify','--destination',join(temp,'wrong-skill'),'--pi-cli',wrong]);
+ assert.equal(r.status,4,r.stdout+r.stderr);
+ const report=JSON.parse(r.stdout);assert.equal(report.status,'verification-failed');assert.equal(report.modelVerified,false);assert.equal(report.verification.cleanup,'stopped');
+ const evidence=report.verification.evidenceDirectory;
+ assert.ok(evidence);assert.ok(existsSync(join(evidence,'task.json')));assert.ok(report.verification.taskId);
+ // This fixture has stopped its owned daemon; remove only its retained test evidence.
+ rmSync(evidence,{recursive:true,force:true});
+});
+after(()=>rmSync(temp,{recursive:true,force:true}));

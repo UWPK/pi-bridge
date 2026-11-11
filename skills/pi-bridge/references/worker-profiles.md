@@ -1,6 +1,6 @@
 # Pi worker profiles and upgrade checks
 
-Read this when a Pi installation has many extensions, workers call unrelated tools, or a model task reaches its deadline without agent_settled. These controls apply to Pi on Windows, macOS and Linux; DSH keeps its own profile.
+Read this when a Pi installation has many extensions, workers call unrelated tools, or a model task reaches its deadline without agent_settled. These controls apply to Pi on Windows, macOS and Linux.
 
 ## Choose a profile
 
