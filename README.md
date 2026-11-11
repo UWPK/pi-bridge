@@ -15,7 +15,7 @@
 三平台均可安装预构建包：
 
 ```text
-npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.3/uwpk-pi-bridge-0.4.3.tgz
+npm install -g https://github.com/UWPK/pi-bridge/releases/download/v0.4.4/uwpk-pi-bridge-0.4.4.tgz
 pi-bridge check-local
 ```
 
@@ -33,11 +33,11 @@ node bin/pi-bridge.mjs check-local
 
 ## 首次安装与验收
 
-已发布的 v0.4.3 支持 `pi-bridge setup --apply`。本分支进一步提供分阶段诊断与 `--verify` 模型验收，需使用源码构建；这些增强尚未包含在 v0.4.3 发布包中。
+v0.4.4 提供分阶段安装诊断与可选模型验收。安装后运行：
 
 ```text
-node bin/pi-bridge.mjs setup --apply
-node bin/pi-bridge.mjs setup --apply --verify
+pi-bridge setup --apply
+pi-bridge setup --apply --verify
 ```
 
 第一步检查 Git、Pi 入口、启动与工作进程参数，安装 skill 并输出完整 MCP 配置，不调用模型。默认沿用 Pi 的模型与认证；`--pi-cli PATH`、`--profile inherit|minimal`、`--destination PATH` 可指定入口、工作进程和共享技能目录。重复运行会复用一致的 skill；发现本机修改时停止并保留文件。

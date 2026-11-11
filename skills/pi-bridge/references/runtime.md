@@ -81,7 +81,7 @@ model task remain separate from this no-model setup check.
 
 ## Setup results and optional model verification
 
-`setup` requires a runtime release containing this command; check the installed CLI help first. Basic setup is available in v0.4.3; staged reports and --verify require a later runtime or this source build. If unavailable, report the version mismatch and use the documented individual commands; do not claim setup succeeded.
+`setup` requires a runtime release containing this command; check the installed CLI help first. Staged reports and --verify are available in v0.4.4. If unavailable, report the version mismatch and use the documented individual commands; do not claim setup succeeded.
 
 `setup --apply` reports staged checks, expected state/skill paths and a complete MCP snippet. `installed` means dependency/startup checks and skill installation passed, not model execution. With explicit user authorization for a small model request, add `--verify` using the same options. It creates a separate temporary Git workspace and instance, delegates one file-creation task and requires passed/verified handoff plus independent verifier exit code 0 and matching file contents. It stops its own instance; successful evidence is removed, failed evidence is retained with its path/task ID. Inspect failed evidence before a new verification, which can incur another model charge.
 
